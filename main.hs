@@ -18,13 +18,17 @@ import Text.Parsec
 --and reopening files. Since we would be doing IO in htmlify, it might end up being MapM as opposed to fmap.
 --It could be useful to have as monads, but for now I think types are best.
 
-data WebElem  =  WebElem {context :: String, stuff :: String} deriving (Show, Eq)
+
+data Element = Paragraph | Header deriving (Eq, Show)
+data WebElem  =  WebElem {element :: Element, content :: Text} deriving (Eq, Show)
+
+type Text = String
 type Website = [WebElem]
 
 file = endBy line eol
 
-line = WebElem "title" <$> title 
-<|> WebElem "text" <$> text
+line = WebElem Header <$> title 
+  <|> WebElem Paragraph <$> text
 
 title = string "# " *> many (noneOf "\n\r") <?> "Title"
 
@@ -36,10 +40,14 @@ eol = try (string "\n\r")
   <|> string "\r"
   <?> "EOL"
 
+htmlify :: WebElem -> String
+htmlify (WebElem Header text) = "<h1>" ++ text ++ "</h1>"
+htmlify (WebElem Paragraph text) = "<p>" ++ text ++ "</p>"
+
 main = do
   handle <- openFile "index.mai" ReadMode
   contents <- hGetContents handle
   case parse file "(unknown)" contents of 
     Left e -> print e
-    Right r -> mapM_ print r
+    Right r -> mapM_ putStr $ map htmlify r
   hClose handle
