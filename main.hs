@@ -1,5 +1,6 @@
 import System.IO
-import Text.ParserCombinators.Parsec
+import Control.Applicative hiding ((<|>),many)
+import Text.Parsec
 
 --Brain dump:
 --I can have all of the content for a website defined by different monads
@@ -17,40 +18,28 @@ import Text.ParserCombinators.Parsec
 --and reopening files. Since we would be doing IO in htmlify, it might end up being MapM as opposed to fmap.
 --It could be useful to have as monads, but for now I think types are best.
 
---Need to implement a function that returns a GenParser for WebElem. Like the string function.
-data WebElem  =  WebElem {context :: String, stuff :: String}
+data WebElem  =  WebElem {context :: String, stuff :: String} deriving (Show, Eq)
 type Website = [WebElem]
 
-markdownFile :: GenParser Char st Website
-markdownFile = do
-  result <- many line
-  eof
-  return result
+file = endBy line eol
 
-line :: GenParser Char st WebElem
-line = do
-  result <- content
-  eol
-  return result
+line = WebElem "title" <$> title 
+<|> WebElem "text" <$> text
 
-content :: GenParser Char st WebElem
-content = do
-  head <- title <|> text
-  return head
+title = string "# " *> many (noneOf "\n\r") <?> "Title"
 
-title :: GenParser Char st WebElem
-title = WebElem "Header" "# Hello, world!"
+text = many (noneOf "\n\r")
 
-text :: GenParser Char st WebElem
-text = WebElem "PlainText" "Mai best girl."
-
-eol :: GenParser Char st Char
-eol = char '\n'
+eol = try (string "\n\r")
+  <|> try (string "\r\n")
+  <|> string "\n"
+  <|> string "\r"
+  <?> "EOL"
 
 main = do
-  handle <- openFile "mai.md" ReadMode
+  handle <- openFile "index.mai" ReadMode
   contents <- hGetContents handle
-  case parse markdownFile "(unknown)" contents of 
+  case parse file "(unknown)" contents of 
     Left e -> print e
     Right r -> mapM_ print r
   hClose handle
