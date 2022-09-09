@@ -2,24 +2,16 @@ import System.IO
 import Control.Applicative hiding ((<|>),many)
 import Text.Parsec
 
---Brain dump:
---I can have all of the content for a website defined by different monads
---They are values with contexts (e.g. titles, footers, bold, etc.)
---I can have strings with the context of them being a title, or being bold, etc.
---Put all of the monads in a queue as I parse them, and then have a function that will pattern match on the
---Different monads and decide how to make them HTML. Since my website will be of a serial nature for most pages,
---I can just step through the queue.
---Will have a "Web element" typeclass.
---Also, I will definitely need to make my own markup.
---It may actually be better to just have a "webElem" monad, which will have the content, and then what the context is (i.e. what element it is).
---In fact, instead of a queue we could define a website type defined as a list of webElems. Then, it is a functor
---and do fun things with it. Might be able to then just fmap 'htmlify' function over the site to generate a page. Have the parser generate the website.
---htmlify would probably be something that takes a file handler as an arg too, so then im not constantly closing
---and reopening files. Since we would be doing IO in htmlify, it might end up being MapM as opposed to fmap.
---It could be useful to have as monads, but for now I think types are best.
+--TODO:
+--Image
+--link
+--embedded html
+--code (block and inline)
+--templating
+--bold, italics
+--footnotes?
 
-
-data Element = Paragraph | Header deriving (Eq, Show)
+data Element = Paragraph | Header | SubHeader deriving (Eq, Show)
 data WebElem  =  WebElem {element :: Element, content :: Text} deriving (Eq, Show)
 
 type Text = String
@@ -28,9 +20,14 @@ type Website = [WebElem]
 file = endBy line eol
 
 line = WebElem Header <$> title 
+  <|> WebElem SubHeader <$> subtitle
   <|> WebElem Paragraph <$> text
 
+--I think we define a paragraph a little differently. We go "many words" unless we find bold or italics which we can use 
+-- <|> bold <|> italics <|> paragraph.
+
 title = string "# " *> many (noneOf "\n\r") <?> "Title"
+subtitle = string "^ " *> many (noneOf "\n\r") <?> "Subtitle"
 
 text = many (noneOf "\n\r")
 
@@ -42,6 +39,7 @@ eol = try (string "\n\r")
 
 htmlify :: WebElem -> String
 htmlify (WebElem Header text) = "<h1>" ++ text ++ "</h1>"
+htmlify (WebElem SubHeader text) = "<h2>" ++ text ++ "</h2>"
 htmlify (WebElem Paragraph text) = "<p>" ++ text ++ "</p>"
 
 main = do
@@ -49,5 +47,5 @@ main = do
   contents <- hGetContents handle
   case parse file "(unknown)" contents of 
     Left e -> print e
-    Right r -> mapM_ putStr $ map htmlify r
+    Right r -> mapM_ putStrLn $ map htmlify r
   hClose handle
