@@ -15,7 +15,7 @@ import Text.Parsec
 --TEXT SHOULD BE A MONAD???
 
 data Element = Header | SubHeader | Paragraph deriving (Eq)
-data WebElem  =  WebElem {element :: Element, content :: Text} deriving (Eq)
+data WebElem  =  WebElem {element :: Element, content :: [[Text]]} deriving (Eq)
 data Text = Text {style :: TextStyle, words :: String} deriving (Eq)
 data TextStyle = Bold | Italic | Plain deriving (Eq)
 
@@ -36,17 +36,18 @@ file = endBy line eol
 
 line = WebElem Header <$> title 
   <|> WebElem SubHeader <$> subtitle
-  <|> WebElem Paragraph <$> text
+  <|> WebElem Paragraph <$> (many text)
 
+text = try boldText <|> try italicText <|> plainText
 
-text = Text Bold <$> (try boldText) <|> Text Italic <$> (try italicText) <|> Text Plain <$> plainText <?> "Text"
+word = many1 (noneOf "\n\r*")
+richTextContent = sepBy1 word (char ' ')
+plainText = map (Text Plain) <$> richTextContent <?> "Plain Text"
+boldText = map (Text Bold) <$> (between (string "**") (string "**") richTextContent) <?> "Bold Text"
+italicText = map (Text Italic) <$> (between (string "*") (string "*") richTextContent) <?> "Bold Text"
 
-plainText = many (noneOf "\n\r")
-boldText = string "**" *> many (noneOf "*") <* string "**"
-italicText = char '*' *> many (noneOf "*") <* char '*'
-
-title = string "# " *> text <?> "Title"
-subtitle = string "^ " *> text <?> "Subtitle"
+title = string "# " *> many text <?> "Title"
+subtitle = string "^ " *> many text <?> "Subtitle"
 
 eol = try (string "\n\r")
   <|> try (string "\r\n")
