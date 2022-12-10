@@ -15,7 +15,7 @@ import Text.Parsec
 --TEXT SHOULD BE A MONAD???
 
 data Element = Header | SubHeader | Paragraph deriving (Eq)
-data WebElem  =  WebElem {element :: Element, content :: [[Text]]} deriving (Eq)
+data WebElem  =  WebElem {element :: Element, content :: [Text]} deriving (Eq)
 data Text = Text {style :: TextStyle, words :: String} deriving (Eq)
 data TextStyle = Bold | Italic | Plain deriving (Eq)
 
@@ -25,9 +25,13 @@ instance Show Text where
      show (Text Plain text) = text
 
 instance Show WebElem where
-     show (WebElem Header text) = "<h1>" ++ (show text) ++ "</h1>"
-     show (WebElem SubHeader text) = "<h2>" ++ (show text) ++ "</h2>"
-     show (WebElem Paragraph text) = "<p>" ++ (show text) ++ "</p>"
+     show (WebElem Header text) = htmlify text "<h1>" "</h1>"
+     show (WebElem SubHeader text) = htmlify text "<h2>" "</h2>"
+     show (WebElem Paragraph text) = htmlify text "<p>" "</p>"
+
+--I would like this to work with styling text too, the problem is that that will just be type Text not [Text] I think.
+htmlify :: [Text] -> String -> String -> String
+htmlify text open close = open ++ (foldl (\acc x -> acc ++ (show x)) "" text) ++ close
 
 --type Paragraph = [Text]
 --type Website = [WebElem]
@@ -40,11 +44,10 @@ line = WebElem Header <$> title
 
 text = try boldText <|> try italicText <|> plainText
 
-word = many1 (noneOf "\n\r*")
-richTextContent = sepBy1 word (char ' ')
-plainText = map (Text Plain) <$> richTextContent <?> "Plain Text"
-boldText = map (Text Bold) <$> (between (string "**") (string "**") richTextContent) <?> "Bold Text"
-italicText = map (Text Italic) <$> (between (string "*") (string "*") richTextContent) <?> "Bold Text"
+richTextContent = many1 (noneOf "\n\r*")
+plainText = (Text Plain) <$> richTextContent <?> "Plain Text"
+boldText = (Text Bold) <$> (between (string "**") (string "**") richTextContent) <?> "Bold Text"
+italicText = (Text Italic) <$> (between (string "*") (string "*") richTextContent) <?> "Bold Text"
 
 title = string "# " *> many text <?> "Title"
 subtitle = string "^ " *> many text <?> "Subtitle"
