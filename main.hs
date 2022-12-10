@@ -11,11 +11,26 @@ import Text.Parsec
 --bold, italics
 --footnotes?
 
-data Element = Paragraph | Header | SubHeader deriving (Eq, Show)
-data WebElem  =  WebElem {element :: Element, content :: Text} deriving (Eq, Show)
 
-type Text = String
-type Website = [WebElem]
+--TEXT SHOULD BE A MONAD???
+
+data Element = Header | SubHeader | Paragraph deriving (Eq)
+data WebElem  =  WebElem {element :: Element, content :: Text} deriving (Eq)
+data Text = Text {style :: TextStyle, words :: String} deriving (Eq)
+data TextStyle = Bold | Italic | Plain deriving (Eq)
+
+instance Show Text where
+     show (Text Bold text) = "<b>" ++ text ++ "</b>"
+     show (Text Italic text) = "<i>" ++ text ++ "</i>"
+     show (Text Plain text) = text
+
+instance Show WebElem where
+     show (WebElem Header text) = "<h1>" ++ (show text) ++ "</h1>"
+     show (WebElem SubHeader text) = "<h2>" ++ (show text) ++ "</h2>"
+     show (WebElem Paragraph text) = "<p>" ++ (show text) ++ "</p>"
+
+--type Paragraph = [Text]
+--type Website = [WebElem]
 
 file = endBy line eol
 
@@ -23,13 +38,15 @@ line = WebElem Header <$> title
   <|> WebElem SubHeader <$> subtitle
   <|> WebElem Paragraph <$> text
 
---I think we define a paragraph a little differently. We go "many words" unless we find bold or italics which we can use 
--- <|> bold <|> italics <|> paragraph.
 
-title = string "# " *> many (noneOf "\n\r") <?> "Title"
-subtitle = string "^ " *> many (noneOf "\n\r") <?> "Subtitle"
+text = Text Bold <$> (try boldText) <|> Text Italic <$> (try italicText) <|> Text Plain <$> plainText <?> "Text"
 
-text = many (noneOf "\n\r")
+plainText = many (noneOf "\n\r")
+boldText = string "**" *> many (noneOf "*") <* string "**"
+italicText = char '*' *> many (noneOf "*") <* char '*'
+
+title = string "# " *> text <?> "Title"
+subtitle = string "^ " *> text <?> "Subtitle"
 
 eol = try (string "\n\r")
   <|> try (string "\r\n")
@@ -37,15 +54,10 @@ eol = try (string "\n\r")
   <|> string "\r"
   <?> "EOL"
 
-htmlify :: WebElem -> String
-htmlify (WebElem Header text) = "<h1>" ++ text ++ "</h1>"
-htmlify (WebElem SubHeader text) = "<h2>" ++ text ++ "</h2>"
-htmlify (WebElem Paragraph text) = "<p>" ++ text ++ "</p>"
-
 main = do
   handle <- openFile "index.mai" ReadMode
   contents <- hGetContents handle
-  case parse file "(unknown)" contents of 
+  case parse file "index.mai" contents of 
     Left e -> print e
-    Right r -> mapM_ putStrLn $ map htmlify r
+    Right r -> mapM_ print r
   hClose handle
