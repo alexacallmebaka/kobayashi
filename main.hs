@@ -7,8 +7,8 @@ import Web
 file = endBy line eol
 
 --A line is a title, subheader, or a text.
-line = WebElem Header <$> header
-  <|> WebElem SubHeader <$> subheader
+line = WebElem Header <$> try header
+  <|> WebElem SubHeader <$> try subheader
   <|> WebElem Paragraph <$> (many text)
 
 --Text is either bold, italic, or plain.
@@ -30,7 +30,7 @@ italicText = (Text Italic) <$> (between (string "*") (string "*") richTextConten
 header = string "# " *> many text <?> "Title"
 
 --Subheader is some text preceded by ^ .
-subheader = string "^ " *> many text <?> "Subtitle"
+subheader = string "## " *> many text <?> "Subtitle"
 
 eol = try (string "\n\r")
   <|> try (string "\r\n")
