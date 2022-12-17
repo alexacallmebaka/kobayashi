@@ -3,21 +3,34 @@ import Control.Applicative hiding ((<|>),many)
 import Text.Parsec
 import Web
 
+--A file is a series of lines ended by eol.
 file = endBy line eol
 
-line = WebElem Header <$> title 
-  <|> WebElem SubHeader <$> subtitle
+--A line is a title, subheader, or a text.
+line = WebElem Header <$> header
+  <|> WebElem SubHeader <$> subheader
   <|> WebElem Paragraph <$> (many text)
 
+--Text is either bold, italic, or plain.
 text = try boldText <|> try italicText <|> plainText
 
+--The content of rich text is one or more of valid string characters.
 richTextContent = many1 (noneOf "\n\r*")
+
+--Plain text is just content.
 plainText = (Text Plain) <$> richTextContent <?> "Plain Text"
+
+--Bold text is rich text content wrapped in **.
 boldText = (Text Bold) <$> (between (string "**") (string "**") richTextContent) <?> "Bold Text"
+
+--Italic text is rich text content wrapped in *.
 italicText = (Text Italic) <$> (between (string "*") (string "*") richTextContent) <?> "Bold Text"
 
-title = string "# " *> many text <?> "Title"
-subtitle = string "^ " *> many text <?> "Subtitle"
+--Header is some text preceded by # .
+header = string "# " *> many text <?> "Title"
+
+--Subheader is some text preceded by ^ .
+subheader = string "^ " *> many text <?> "Subtitle"
 
 eol = try (string "\n\r")
   <|> try (string "\r\n")
@@ -30,5 +43,5 @@ main = do
   contents <- hGetContents handle
   case parse file "index.mai" contents of 
     Left e -> print e
-    Right r -> mapM_ print r
+    Right r -> putStr $ foldl (\acc x -> acc ++ htmlify x ++ "\n") "" r
   hClose handle
