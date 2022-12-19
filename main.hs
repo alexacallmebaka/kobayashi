@@ -9,28 +9,40 @@ file = endBy line eol
 --A line is a title, subheader, or a text.
 line = WebElem Header <$> try header
   <|> WebElem SubHeader <$> try subheader
-  <|> WebElem Paragraph <$> (many text)
+  <|> WebElem Paragraph <$> (many richText)
 
 --Text is either bold, italic, or plain.
-text = try boldText <|> try italicText <|> plainText
+richText = many (char ' ') *> (try boldText <|> try italicText <|> plainText) <?> "Rich Text"
+
+metaChars = "*\\"
+
+escapedChar = char '\\' *> oneOf metaChars
+
+richTextChar = escapedChar <|> noneOf (metaChars ++ " \n\r") <?> "Character"
 
 --The content of rich text is one or more of valid string characters.
-richTextContent = many1 (noneOf "\n\r*")
+richTextWord = many1 richTextChar <?> "Word"
+
+richTextWords = sepEndBy1 richTextWord (char ' ') <?> "Words"
+
+--I think there is potnential for a left-recursive definition to do the nesting of bold and italics I want here. 
+--Plaintext would act as a terminal.
+--Try writing grammar to help figure this out?
 
 --Plain text is just content.
-plainText = (Text Plain) <$> richTextContent <?> "Plain Text"
+plainText = (RichText Plain) <$> richTextWords <?> "Plain Text"
 
 --Bold text is rich text content wrapped in **.
-boldText = (Text Bold) <$> (between (string "**") (string "**") richTextContent) <?> "Bold Text"
+boldText = (RichText Bold) <$> (string "**" *> richTextWords <* string "**") <?> "Bold Text"
 
 --Italic text is rich text content wrapped in *.
-italicText = (Text Italic) <$> (between (string "*") (string "*") richTextContent) <?> "Bold Text"
+italicText = (RichText Italic) <$> (string "*" *> richTextWords <* string "*") <?> "Italic Text"
 
 --Header is some text preceded by # .
-header = string "# " *> many text <?> "Title"
+header = string "# " *> many richText <?> "Title"
 
 --Subheader is some text preceded by ^ .
-subheader = string "## " *> many text <?> "Subtitle"
+subheader = string "## " *> many richText <?> "Subtitle"
 
 eol = try (string "\n\r")
   <|> try (string "\r\n")
