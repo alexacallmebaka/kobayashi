@@ -21,7 +21,7 @@ data Element = Header | SubHeader | Paragraph
 data RichTextStyle = Bold | Italic | Plain
 
 --A piece of RichText has a style and the string contents.
-data RichText = RichText {style :: RichTextStyle, words :: [String]}
+data RichText = RichText {style :: RichTextStyle, words :: String}
 
 --WebElem types contains a type of html tag and the text contents of that tag.
 data WebElem  =  WebElem {element :: Element, content :: [RichText]}
@@ -40,10 +40,11 @@ instance Html RichTextStyle where
 --To turn text into html we wrap the text contents in the proper tags. 
 instance Html RichText where
   --Plain text has no html tags.
-  htmlify (RichText Plain text) = intercalate " " text
+  htmlify (RichText Plain text) = text
+ --intercalate " " text
   htmlify (RichText style text) = 
     let open = "<" ++ htmlify style ++ ">"
-        content = htmlify (RichText Plain $ text)
+        content = htmlify (RichText Plain text)
         close = "</" ++ htmlify style ++ ">"
     in open ++ content ++ close
 
@@ -56,6 +57,7 @@ instance Html RichText where
 instance Html WebElem where
   htmlify (WebElem elem text) =
     let open = "<" ++ htmlify elem ++ ">"
-        content = foldl (\acc x -> acc ++ htmlify x) "" text
+        content = foldl (\acc x -> acc ++ htmlify x) "" text 
+        -- $ intersperse (RichText Plain [" "]) text
         close = "</" ++ htmlify elem ++ ">"
     in open ++ content ++ close

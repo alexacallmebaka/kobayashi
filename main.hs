@@ -1,6 +1,7 @@
 import System.IO
 import Control.Applicative hiding ((<|>),many)
 import Text.Parsec
+import Data.List
 import Web
 
 --A file is a series of lines ended by eol.
@@ -12,31 +13,35 @@ line = WebElem Header <$> try header
   <|> WebElem Paragraph <$> (many richText)
 
 --Text is either bold, italic, or plain.
+--the error im having is that the *> thorws away the whitespace.
+--richText = try (RichText Plain <$> (many1 (string " "))) <|> try boldText <|> try italicText <|> plainText <?> "Rich Text"
 richText = many (char ' ') *> (try boldText <|> try italicText <|> plainText) <?> "Rich Text"
 
 metaChars = "*\\"
 
 escapedChar = char '\\' *> oneOf metaChars
 
-richTextChar = escapedChar <|> noneOf (metaChars ++ " \n\r") <?> "Character"
+richTextChar = escapedChar <|> noneOf (metaChars ++ "\n\r") <?> "Character"
 
 --The content of rich text is one or more of valid string characters.
-richTextWord = many1 richTextChar <?> "Word"
+--richTextWord = many1 richTextChar <?> "Word"
 
-richTextWords = sepEndBy1 richTextWord (char ' ') <?> "Words"
+--richTextWords = sepEndBy1 richTextWord (char ' ') <?> "Words"
+richTextContent = many1 richTextChar <?> "Word"
+
 
 --I think there is potnential for a left-recursive definition to do the nesting of bold and italics I want here. 
 --Plaintext would act as a terminal.
 --Try writing grammar to help figure this out?
 
 --Plain text is just content.
-plainText = (RichText Plain) <$> richTextWords <?> "Plain Text"
+plainText = (RichText Plain) <$> richTextContent <?> "Plain Text"
 
 --Bold text is rich text content wrapped in **.
-boldText = (RichText Bold) <$> (string "**" *> richTextWords <* string "**") <?> "Bold Text"
+boldText = (RichText Bold) <$> (string "**" *> richTextContent <* string "**") <?> "Bold Text"
 
 --Italic text is rich text content wrapped in *.
-italicText = (RichText Italic) <$> (string "*" *> richTextWords <* string "*") <?> "Italic Text"
+italicText = (RichText Italic) <$> (string "*" *> richTextContent <* string "*") <?> "Italic Text"
 
 --Header is some text preceded by # .
 header = string "# " *> many richText <?> "Title"
