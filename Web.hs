@@ -48,9 +48,6 @@ instance Html RichText where
         close = "</" ++ htmlify style ++ ">"
     in open ++ content ++ close
 
---Make RichText a monoid?
---will need intercalate for RichText
-
 --To turn a WebElem to html, we wrap the contents in the proper tags.
 --Since the contents are a list of RichText with potentially different styles, 
 --We turn each RichText to html and the concatenate them into one string.
