@@ -1,7 +1,6 @@
 import System.IO
 import Control.Applicative hiding ((<|>),many)
 import Text.Parsec
-import Data.List
 import Web
 
 --A file is a series of lines ended by eol.
@@ -13,22 +12,19 @@ line = WebElem Header <$> try header
   <|> WebElem Paragraph <$> (many richText)
 
 --Text is either bold, italic, or plain.
---the error im having is that the *> thorws away the whitespace.
---richText = try (RichText Plain <$> (many1 (string " "))) <|> try boldText <|> try italicText <|> plainText <?> "Rich Text"
-richText = many (char ' ') *> (try boldText <|> try italicText <|> plainText) <?> "Rich Text"
+richText = try boldText <|> try italicText <|> plainText <?> "Rich Text"
 
+--All metachars.
 metaChars = "*\\"
 
+--To escape a metachar, it is prefixed with a backslash.
 escapedChar = char '\\' *> oneOf metaChars
 
+--A Rich Text char is an escaped char or one valid non-metachar.
 richTextChar = escapedChar <|> noneOf (metaChars ++ "\n\r") <?> "Character"
 
---The content of rich text is one or more of valid string characters.
---richTextWord = many1 richTextChar <?> "Word"
-
---richTextWords = sepEndBy1 richTextWord (char ' ') <?> "Words"
-richTextContent = many1 richTextChar <?> "Word"
-
+--Rich Text content is many rich text characters.
+richTextContent = many1 richTextChar <?> "Rich Text Content"
 
 --I think there is potnential for a left-recursive definition to do the nesting of bold and italics I want here. 
 --Plaintext would act as a terminal.
@@ -46,9 +42,10 @@ italicText = (RichText Italic) <$> (string "*" *> richTextContent <* string "*")
 --Header is some text preceded by # .
 header = string "# " *> many richText <?> "Title"
 
---Subheader is some text preceded by ^ .
+--Subheader is some text preceded by ## .
 subheader = string "## " *> many richText <?> "Subtitle"
 
+--End of line could be many things.
 eol = try (string "\n\r")
   <|> try (string "\r\n")
   <|> string "\n"
