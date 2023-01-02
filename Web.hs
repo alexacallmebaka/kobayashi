@@ -7,9 +7,6 @@ module Web
 , Html(..)
 ) where
 
-import Data.Monoid
-import Data.List
-
 --A typeclass for html elements.
 class Html a where
   htmlify :: a -> String
@@ -39,9 +36,11 @@ instance Html RichTextStyle where
 
 --To turn text into html we wrap the text contents in the proper tags. 
 instance Html RichText where
+
   --Plain text has no html tags.
   htmlify (RichText Plain text) = text
- --intercalate " " text
+  
+  --Other styled text is just plain text wrapped in html tags.
   htmlify (RichText style text) = 
     let open = "<" ++ htmlify style ++ ">"
         content = htmlify (RichText Plain text)
@@ -50,11 +49,10 @@ instance Html RichText where
 
 --To turn a WebElem to html, we wrap the contents in the proper tags.
 --Since the contents are a list of RichText with potentially different styles, 
---We turn each RichText to html and the concatenate them into one string.
+--we turn each RichText to html and the concatenate them into one string.
 instance Html WebElem where
   htmlify (WebElem elem text) =
     let open = "<" ++ htmlify elem ++ ">"
         content = foldl (\acc x -> acc ++ htmlify x) "" text 
-        -- $ intersperse (RichText Plain [" "]) text
         close = "</" ++ htmlify elem ++ ">"
     in open ++ content ++ close
