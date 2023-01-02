@@ -6,11 +6,11 @@ module Lexer
 import Control.Applicative hiding ((<|>),many)
 import Text.Parsec hiding (token, tokens)
 
-data Token = Header | Subheader | Bold | Italic | Text Char deriving Show
+data Token = Header | Subheader | Bold | Italic | EOL | Text Char deriving Show
 
 tokens = many token
 
-token = try subheader <|> header <|> text
+token = try subheader <|> header <|> text <|> eol
 
 subheader = string "## " *> return Subheader
 
@@ -29,6 +29,12 @@ escapedChar = char '\\' *> oneOf metaChars
 
 metaChars = "*\\"
 --1}}}
+
+eol = choice [ try (string "\n\r")
+             , try (string "\r\n")
+             , string "\n"
+             , string "\r"
+             ] *> return EOL
 
 tokenize :: SourceName -> String -> Either ParseError [Token]
 tokenize = runParser tokens ()
