@@ -24,9 +24,11 @@ textTok = tokenPrim show nextPos testText where
 
 html = many element
 
-element = header <|> text
+element = header <|> subheader <|> text
 
 header = basicTok L.Header *> (Header <$> (many1 text))
+
+subheader = basicTok L.Subheader *> (Subheader <$> (many1 text))
 
 text = italicText <|> boldText <|> plainText
 
