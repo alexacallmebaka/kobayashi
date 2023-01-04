@@ -26,8 +26,6 @@ html = many element
 
 element = header <|> text
 
---header = basicTok L.Header *> (return $ Header $ [PlainText "h"])
-
 header = basicTok L.Header *> (Header <$> (many1 text))
 
 text = italicText <|> boldText <|> plainText

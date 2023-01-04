@@ -17,17 +17,17 @@ subheader = string "## " *> return Subheader
 header = string "# " *> return Header
 
 --Text {{{1
-text = try bold <|> italic <|> PlainText <$> many1 textChar
+text = bold <|> italic <|> PlainText <$> many1 textChar
 
-bold = string "**" *> return Bold
+bold = string "*" *> return Bold
 
-italic = string "*" *> return Italic
+italic = string "/" *> return Italic
 
 textChar = escapedChar <|> noneOf (metaChars ++ "\n\r")
 
 escapedChar = char '\\' *> oneOf metaChars
 
-metaChars = "*\\"
+metaChars = "*\\/"
 --1}}}
 
 --eol = choice [ try (string "\n\r")
