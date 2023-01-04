@@ -6,18 +6,18 @@ module Lexer
 import Control.Applicative hiding ((<|>),many)
 import Text.Parsec hiding (token, tokens)
 
-data Token = Header | Subheader | Bold | Italic | EOL | Text Char deriving Show
+data Token = Header | Subheader | Bold | Italic | PlainText String deriving (Eq, Show)
 
 tokens = many token
 
-token = try subheader <|> header <|> text <|> eol
+token = try subheader <|> header <|> text
 
 subheader = string "## " *> return Subheader
 
 header = string "# " *> return Header
 
 --Text {{{1
-text = try bold <|> italic <|> Text <$> textChar
+text = try bold <|> italic <|> PlainText <$> many1 textChar
 
 bold = string "**" *> return Bold
 
@@ -30,11 +30,11 @@ escapedChar = char '\\' *> oneOf metaChars
 metaChars = "*\\"
 --1}}}
 
-eol = choice [ try (string "\n\r")
-             , try (string "\r\n")
-             , string "\n"
-             , string "\r"
-             ] *> return EOL
+--eol = choice [ try (string "\n\r")
+--             , try (string "\r\n")
+--             , string "\n"
+--             , string "\r"
+--             ]
 
 tokenize :: SourceName -> String -> Either ParseError [Token]
 tokenize = runParser tokens ()
