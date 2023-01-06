@@ -25,7 +25,7 @@ italic = string "/" *> return Italic <?> "italic text '/'"
 
 textChar = escapedChar <|> noneOf (metaChars ++ "\n\r") <?> "valid text character"
 
-escapedChar = char '\\' *> oneOf metaChars <?> "an escaped metacharacter, escape with \\"
+escapedChar = char '\\' *> noneOf "\n\r" <?> "an escaped metacharacter, escape with \\"
 
 metaChars = "*\\/"
 --1}}}
