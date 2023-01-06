@@ -1,10 +1,19 @@
-import System.IO
+module Parser
+  ( parse
+  , Element(..)
+  ) where
+
 import qualified Lexer as L
 import Control.Applicative hiding ((<|>),many)
-import Text.Parsec
-import Control.Monad.Identity
+import Text.Parsec hiding (parse)
 
-data HTML = Bold [HTML] | Italic [HTML] | Header [HTML] | Subheader [HTML] | Paragraph [HTML] | PlainText String deriving Show
+data Element = Header [Element] --{{{1
+             | Subheader [Element] 
+             | Paragraph [Element] 
+             | Bold [Element] 
+             | Italic [Element] 
+             | PlainText String deriving Show
+--1}}}
 
 type Parser a = Parsec [L.Token] () a
 
@@ -15,6 +24,7 @@ basicTok t = tokenPrim show nextPos testTok where
   testTok x = if x == t then Just x else Nothing  
 --1}}}
 
+--parse a text token from the lexer.
 textTok :: Parser String --{{{1
 textTok = tokenPrim show nextPos testText where
   nextPos pos x xs = incSourceColumn pos 1
@@ -22,13 +32,16 @@ textTok = tokenPrim show nextPos testText where
   testText _  = Nothing  
 --1}}}
 
-html = many element
+--parser def {{{1
+document = many element
 
-element = header <|> subheader <|> text
+element = header <|> subheader <|> paragraph
 
 header = basicTok L.Header *> (Header <$> (many1 text))
 
 subheader = basicTok L.Subheader *> (Subheader <$> (many1 text))
+
+paragraph = Paragraph <$> many1 text
 
 text = italicText <|> boldText <|> plainText
 
@@ -37,17 +50,7 @@ italicText = Italic <$> (basicTok L.Italic *> many1 (plainText <|> boldText) <* 
 boldText = Bold <$> (basicTok L.Bold *> many1 (plainText <|> italicText) <* basicTok L.Bold)
 
 plainText = PlainText <$> textTok
+--1}}}
 
-parse1 :: String -> [HTML]
-parse1 input = case L.tokenize "index.mai" input of
-                Left e -> [PlainText $ show e]
-                Right r -> case parse html "index.mai" r of
-                             Left e -> [PlainText $ show e]
-                             Right r -> r
-
-main = do
-  handle <- openFile "index.mai" ReadMode
-  contents <- hGetContents handle
-  print $ (parse1 contents)
-  --Right r -> putStr $ foldl (\acc x -> acc ++ htmlify x ++ "\n") "" r
-  hClose handle
+parse :: SourceName -> [L.Token] -> Either ParseError [Element]
+parse = runParser document ()

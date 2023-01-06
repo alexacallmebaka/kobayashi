@@ -8,13 +8,13 @@ import Text.Parsec hiding (token, tokens)
 
 data Token = Header | Subheader | Bold | Italic | PlainText String deriving (Eq, Show)
 
+file = endBy tokens eol
+
 tokens = many token
 
-token = try subheader <|> header <|> text
+token = header <|> text
 
-subheader = string "## " *> return Subheader
-
-header = string "# " *> return Header
+header = char '@' *> option Header (char '@' *> return Subheader)
 
 --Text {{{1
 text = bold <|> italic <|> PlainText <$> many1 textChar
@@ -30,11 +30,11 @@ escapedChar = char '\\' *> oneOf metaChars
 metaChars = "*\\/"
 --1}}}
 
---eol = choice [ try (string "\n\r")
---             , try (string "\r\n")
---             , string "\n"
---             , string "\r"
---             ]
+eol = choice [ try (string "\n\r")
+             , try (string "\r\n")
+             , string "\n"
+             , string "\r"
+             ]
 
 tokenize :: SourceName -> String -> Either ParseError [Token]
 tokenize = runParser tokens ()
