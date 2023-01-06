@@ -35,21 +35,21 @@ textTok = tokenPrim show nextPos testText where
 --parser def {{{1
 document = many element
 
-element = header <|> subheader <|> paragraph
+element = header <|> subheader <|> paragraph <?> "document element"
 
-header = basicTok L.Header *> (Header <$> (many1 text))
+header = basicTok L.Header *> (Header <$> (many1 text)) <?> "header"
 
-subheader = basicTok L.Subheader *> (Subheader <$> (many1 text))
+subheader = basicTok L.Subheader *> (Subheader <$> (many1 text)) <?> "subheader"
 
-paragraph = Paragraph <$> many1 text
+paragraph = Paragraph <$> many1 text <?> "paragraph"
 
-text = italicText <|> boldText <|> plainText
+text = italicText <|> boldText <|> plainText <?> "text"
 
-italicText = Italic <$> (basicTok L.Italic *> many1 (plainText <|> boldText) <* basicTok L.Italic)
+italicText = Italic <$> (basicTok L.Italic *> many1 (plainText <|> boldText) <* basicTok L.Italic) <?> "italic text"
 
-boldText = Bold <$> (basicTok L.Bold *> many1 (plainText <|> italicText) <* basicTok L.Bold)
+boldText = Bold <$> (basicTok L.Bold *> many1 (plainText <|> italicText) <* basicTok L.Bold) <?> "bold text"
 
-plainText = PlainText <$> textTok
+plainText = PlainText <$> textTok <?> "plain text"
 --1}}}
 
 parse :: SourceName -> [L.Token] -> Either ParseError [Element]
