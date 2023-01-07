@@ -1,6 +1,5 @@
 ## Todo
-* Better paragraphs (i.e. not line-per-paragraph').
-* Accurate and better error messages.
+* Better paragraphs (i.e. not paragraph-per-line).
 * Multiple files.
 * Command line args.
 * Images.
