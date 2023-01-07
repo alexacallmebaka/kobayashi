@@ -9,4 +9,8 @@
 * Strikethrough.
 * Lists.
 * Embedded HTML (kinda goes with the macros).
-* Navbar/Macros.
+* Navbar/macros.
+* config file?
+* add CSS.
+* html root/body tags.
+* pretty formatting.
