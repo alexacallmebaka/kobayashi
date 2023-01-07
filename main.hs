@@ -6,6 +6,7 @@ import Lexer
 import Parser
 import HTML
 
+--first lex, then parse, stopping for errors.
 buildSite :: String -> Either ParseError [Element]
 buildSite [] = Right []
 buildSite x = case tokenize "index.mai" x of
@@ -18,5 +19,7 @@ main = do
   site <- return $ map buildSite $ lines $ contents
   case partitionEithers site of
     ([],y) -> mapM_ (putStrLn . htmlFold) y
-    (x,y) -> mapM_ print x
+    (x,y) -> do
+              putStrLn "Some errors have occured!" 
+              mapM_ print x
   hClose handle 
