@@ -1,4 +1,4 @@
---module for HTML tyoeclass and related functions.
+--a module for HTML tyoeclass and related functions.
 module HTML
   ( Html(..)
   , htmlFold

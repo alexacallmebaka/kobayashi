@@ -1,4 +1,4 @@
---parser to parse a stream of tokens from the lexer.
+--a parser to parse a stream of tokens from the lexer.
 module Parser
   ( parse
   , Element(..)

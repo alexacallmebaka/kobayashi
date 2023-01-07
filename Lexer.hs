@@ -23,7 +23,7 @@ token = do
   t <- header <|> text
   return (t,p)
 
---a sincge @ denotes a header, and two @ denote a subheader.
+--a single @ denotes a header, and two @ denote a subheader.
 header = char '@' *> option Header (char '@' *> return Subheader) <?> "header or subheader"
 
 --text {{{1

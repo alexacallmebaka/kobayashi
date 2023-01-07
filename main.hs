@@ -6,7 +6,7 @@ import Lexer
 import Parser
 import HTML
 
---first lex, then parse, stopping for errors.
+--first lex, then parse or return errors.
 buildSite :: String -> Either ParseError [Element]
 buildSite [] = Right []
 buildSite x = case tokenize "index.mai" x of
