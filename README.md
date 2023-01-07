@@ -12,5 +12,4 @@
 * Navbar/macros.
 * config file?
 * add CSS.
-* html root/body tags.
 * pretty formatting.

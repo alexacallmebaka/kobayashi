@@ -18,8 +18,11 @@ main = do
   contents <- hGetContents handle
   site <- return $ map buildSite $ lines $ contents
   case partitionEithers site of
-    ([],y) -> mapM_ (putStrLn . htmlFold) y
+    ([],y) -> do
+      putStrLn "<!DOCTYPE HTML>\n<html>\n<body>"
+      mapM_ (putStrLn . htmlFold) y
+      putStrLn "</body>\n</html>"
     (x,y) -> do
-              putStrLn "Some errors have occured!" 
-              mapM_ print x
+      putStrLn "Some errors have occured!" 
+      mapM_ print x
   hClose handle 
