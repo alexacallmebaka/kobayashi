@@ -16,13 +16,11 @@ buildSite x = case tokenize "index.mai" x of
 main = do
   handle <- openFile "index.mai" ReadMode
   contents <- hGetContents handle
-  site <- return $ map buildSite $ lines $ contents
-  case partitionEithers site of
-    ([],y) -> do
+  case buildSite contents of
+    Right r -> do
       putStrLn "<!DOCTYPE HTML>\n<html>\n<body>"
-      mapM_ (putStrLn . htmlFold) y
+      mapM_ (putStrLn . htmlify) r
       putStrLn "</body>\n</html>"
-    (x,y) -> do
-      putStrLn "Some errors have occured!" 
-      mapM_ print x
+    Left l -> do
+      print l
   hClose handle 

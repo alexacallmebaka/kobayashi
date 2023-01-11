@@ -8,19 +8,18 @@ module Lexer
 import Control.Applicative hiding ((<|>),many)
 import Text.Parsec hiding (token, tokens)
 
-data Token = Header | Subheader | Bold | Italic | PlainText String deriving (Eq, Show)
+data Token = Header | Subheader | Bold | Italic | EOL | PlainText String deriving (Eq, Show)
 
 type TokenPos = (Token, SourcePos)
 
 --a file is several lines of tokens.
-file = endBy tokens eol
 
 tokens = many token
 
 --a token is either header or text related.
 token = do
   p <- getPosition 
-  t <- header <|> text
+  t <- header <|> text <|> eol
   return (t,p)
 
 --a single @ denotes a header, and two @ denote a subheader.
@@ -53,7 +52,7 @@ eol = choice [ try (string "\n\r")
              , try (string "\r\n")
              , string "\n"
              , string "\r"
-             ] <?> "end of line"
+             ] *> return EOL <?> "end of line"
 
 tokenize :: SourceName -> String -> Either ParseError [TokenPos]
 tokenize = runParser tokens ()
