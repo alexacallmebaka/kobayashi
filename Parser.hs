@@ -1,25 +1,14 @@
 --a parser to parse a stream of tokens from the lexer.
 module Parser
   ( parse
-  , Text(..)
-  , Element(..)
   ) where
 
 import qualified Lexer as L
 import Control.Applicative hiding ((<|>),many,optional)
 import Text.Parsec hiding (parse)
+import Document
 
---document elements. {{{1
-data Element = Header [Text]
-             | Subheader [Text] 
-             | Paragraph [[Text]] deriving Show
---1}}}
 
---document text. {{{1
-data Text = Bold [Text]
-          | Italic [Text]
-          | PlainText String deriving Show
---1}}}
 
 type Parser a = Parsec [L.TokenPos] () a
 

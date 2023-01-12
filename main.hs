@@ -5,6 +5,7 @@ import Control.Monad
 import Lexer
 import Parser
 import HTML
+import Document
 
 --first lex, then parse or return errors.
 buildSite :: String -> Either ParseError [Element]
