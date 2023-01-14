@@ -1,45 +1,62 @@
 --a module for HTML tyoeclass and related functions.
-module HTML
-  ( Html(..)
+module HTML --{{{1
+  ( Text(..)
+  , DocuElem (..)
+  , Tag (..)
+  , TextStyle (..)
+  , HTML(..)
   ) where
+--1}}}
 
-import Document
-import Data.List (intercalate)
+class HTML a where
+    htmlify :: a -> String
+
+--text. {{{1
+data TextStyle = Bold | Italic deriving Show
+
+data Text = RichText TextStyle [Text] | PlainText String deriving Show
+--1}}}
+
+--basic tagged elements. {{{1
+data Tag = Header | Subheader | Paragraph deriving Show
+
+data DocuElem = DocuElem Tag [Text] deriving Show
+--1}}}
+
+--helper functions. {{{1
 
 --fold up a list of html elements into an HTML string.
-htmlFold :: (Html a) => [a] -> String
---htmlFold = foldl (\acc x -> acc ++ wrap x) ""
+htmlFold :: (HTML a) => [a] -> String --{{{2
 htmlFold = foldl (\acc x -> acc ++ htmlify x) ""
+--2}}}
 
-class Html a where
-    htmlify :: a -> String
---   wrap :: a -> String
+--wrap a list of inner html in tags from outer html.
+wrap :: (HTML a, HTML b) => a -> [b] -> String --{{{2
+wrap outer inner = "<" ++ htmlify outer ++ ">" ++ htmlFold inner ++ "</" ++ htmlify outer ++ ">"
+--2}}}
 
+--1}}}
 
 --define how things transform to html.
 
---parser elements. {{{1
---instance Html Element where
-      
---    htmlify (Header x) = "h1"  
---    htmlify (Subheader x) = "h2"  
---    htmlify (Paragraph x) = "p"  
---    htmlify (Bold x) = "strong"
---    htmlify (Italic x) = "em"
---    htmlify (PlainText x) = ""
+--basic tags. {{{1
+instance HTML Tag where
+    htmlify Header = "h1"  
+    htmlify Subheader = "h2"  
+    htmlify Paragraph = "p"  
+--1}}}
 
---    wrap (PlainText x) = x
---    wrap (Paragraph x) = "<p>" ++ (htmlFold . intercalate [PlainText "\n"]) x ++ "<p>"
---    wrap a = "<" ++ htmlify a ++ ">" ++ htmlFold x ++ "<" ++ htmlify a ++ "/>"
---1}}} 
+--simple elements.
+instance HTML DocuElem where
+  htmlify (DocuElem tag text) = wrap tag text
 
-instance Html Element where
-  htmlify (Header x) = "<h1>" ++ htmlFold x ++ "</h1>"
-  htmlify (Subheader x) = "<h2>" ++ htmlFold x ++ "</h2>"
-  htmlify (Paragraph x) = "<p>" ++ (htmlFold . intercalate [PlainText "\n"]) x ++ "</p>"
+--text styles. {{{1
+instance HTML TextStyle where
+    htmlify Bold = "strong"
+    htmlify Italic = "em"
+--1}}}
 
---parser text. {{{1
-instance Html Text where
+--text elements.
+instance HTML Text where
     htmlify (PlainText x) = x
-    htmlify (Bold x) = "<strong>" ++ htmlFold x ++ "</strong>"
-    htmlify (Italic x) = "<em>" ++ htmlFold x ++ "</em>"
+    htmlify (RichText style text)  = wrap style text

@@ -5,10 +5,9 @@ import Control.Monad
 import Lexer
 import Parser
 import HTML
-import Document
 
 --first lex, then parse or return errors.
-buildSite :: String -> Either ParseError [Element]
+buildSite :: String -> Either ParseError [DocuElem]
 buildSite [] = Right []
 buildSite x = case tokenize "index.mai" x of
                 Left l -> Left l
