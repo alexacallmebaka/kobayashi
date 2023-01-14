@@ -1,8 +1,8 @@
---a module for HTML tyoeclass and related functions.
+--a module for HTML typeclass and related functions.
 module HTML --{{{1
-  ( Text(..)
-  , DocuElem (..)
+  ( DocuElem (..)
   , Tag (..)
+  , Text
   , TextStyle (..)
   , HTML(..)
   ) where
