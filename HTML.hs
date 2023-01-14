@@ -2,7 +2,7 @@
 module HTML --{{{1
   ( DocuElem (..)
   , Tag (..)
-  , Text
+  , Text (..)
   , TextStyle (..)
   , HTML(..)
   ) where
