@@ -1,15 +1,34 @@
 import System.IO
 import System.Environment
-import Text.Parsec (ParseError)
-import Control.Monad
 import Lexer (tokenize)
 import Parser (parse)
 import HTML (htmlify)
+import Data.List
+
+--define args which operate on input.
+dispatch :: [(String, [String] -> IO ())] --{{{1
+dispatch = [ ("build", buildPage . head) ]
+--1}}}
+
+--help command.
+help :: IO () --{{{1
+help = mapM_ putStrLn [ "Usage: kobayashi <command>\n"
+                      ,"commands"
+                      , "============"
+                      , "build /path/to/source.kby:\t build .kby file to html."
+                      ]
+--1}}}
 
 --arg handler.
---dispatch :: [(String, String -> IO ())]
+processArgs :: [String] -> IO () --{{{1
+processArgs [] = putStrLn "No commands, nothing to do..."
+processArgs ["help"] = help
+processArgs (cmd:args) = case lookup cmd dispatch of
+                      Just action -> action args
+                      Nothing -> putStrLn $ "[ERROR] halting due to invalid command: " ++ cmd
+--1}}}
 
---first lex, then parse, then htmlify, then print html or errors.
+--lex, parse, htmlify, then print html or errors.
 buildPage :: String -> IO () --{{{1
 buildPage source = do
               handle <- openFile source ReadMode
@@ -27,4 +46,4 @@ buildPage source = do
 
 main = do
   args <- getArgs
-  buildPage "index.kby"
+  processArgs args

@@ -1,6 +1,5 @@
 ## Todo
 * Multiple files.
-* Command line args.
 * Images.
 * Links.
 * Code blocks/verbatim.
