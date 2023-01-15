@@ -1,9 +1,14 @@
+-- imports {{{1
 import System.IO
-import System.Environment
+import System.FilePath
+import System.CPUTime (getCPUTime)
+import System.Environment (getArgs)
+import System.Directory (createDirectoryIfMissing)
+import Text.Printf (printf)
 import Lexer (tokenize)
 import Parser (parse)
 import HTML (htmlify)
-import Data.List
+--1}}}
 
 --define args which operate on input.
 dispatch :: [(String, [String] -> IO ())] --{{{1
@@ -31,19 +36,26 @@ processArgs (cmd:args) = case lookup cmd dispatch of
 --lex, parse, htmlify, then print html or errors.
 buildPage :: String -> IO () --{{{1
 buildPage source = do
-              handle <- openFile source ReadMode
-              contents <- hGetContents handle
-              case tokenize source contents of
-                Left l -> print l
-                Right r -> case parse source r of
-                  Left l -> print l
-                  Right r -> do
-                    putStrLn "<!DOCTYPE HTML>\n<html>\n<body>"
-                    mapM_ (putStrLn . htmlify) r
-                    putStrLn "</body>\n</html>"
-              hClose handle 
+              printf "Building %s...\n" source
+              createDirectoryIfMissing True "site"
+              input <- readFile source
+              case tokenize source input of
+                Left err -> print err
+                Right tokens -> case parse source tokens of
+                  Left err -> print err
+                  Right doc -> do
+                    let content = concat $ map ((++ "\n") . htmlify) doc
+                        page = "<!DOCTYPE HTML>\n<html>\n<body>\n" ++  content ++ "</body>\n</html>"
+                        outfile = "site" </> source -<.> ".html"
+                     in writeFile outfile page
 --1}}}
 
-main = do
+--entrypoint + timing
+main = do --{{{1
+  start <- getCPUTime
   args <- getArgs
   processArgs args
+  end <- getCPUTime
+  let time = fromIntegral (end-start) / (10^12)
+   in printf "Finished in %0.4f sec." (time :: Double)
+--1}}}
