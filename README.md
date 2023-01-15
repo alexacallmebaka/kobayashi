@@ -65,9 +65,9 @@ Here is my current list of to-dos before the first release:
 * Lists.
 * Embedded `HTML` (kinda goes with the macros).
 * Navbar/macros.
-* config file?
-* add CSS.
-* pretty `HTML` formatting.
+* Config file?
+* Add CSS.
+* Pretty `HTML` formatting.
 
-some other ideas for after a stable release:
-* integration with docker.
+Some other ideas for after a stable release:
+* Integration with docker.
