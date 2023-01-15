@@ -43,8 +43,6 @@ header = basicTok L.Header *> (DocuElem Header <$> (many1 text)) <* eol <?> "hea
 --parse a subheader, and the text contents of the header.
 subheader = basicTok L.Subheader *> (DocuElem Subheader <$> (many1 text)) <* eol <?> "subheader"
 
--- i think i can do some monadic logic here with optionmaybes and avoid the intercalate
---
 --a bunch of lines makes a paragraph. A paragraph is ended by two newlines, another element, or eof.
 paragraph = DocuElem Paragraph . intercalate [PlainText "\n"] <$> many1 line <* optional eol <?> "paragraph"
 
