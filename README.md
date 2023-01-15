@@ -38,7 +38,7 @@ ghc main.hs -outputdir build -o kobayashi
 
 Depending on how your Haskell environment is set up, you may need to use `-dynamic` when compiling.
 You can then build individual `.kby` files with 
-``
+```
 ./kobayashi build /path/to/file.kby
 ```
 
