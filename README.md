@@ -50,7 +50,7 @@ There is currently no support for batch builds, but there will be by the first r
 If you are ever stuck, list out all possible commands by using 
 ```
 ./kobayashi help
-```.
+```
 
 # What's next?
 ---
