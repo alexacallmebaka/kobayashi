@@ -57,5 +57,5 @@ main = do --{{{1
   processArgs args
   end <- getCPUTime
   let time = fromIntegral (end-start) / (10^12)
-   in printf "Finished in %0.4f sec." (time :: Double)
+   in printf "Finished in %0.4f sec.\n" (time :: Double)
 --1}}}
