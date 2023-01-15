@@ -44,15 +44,23 @@ header = basicTok L.Header *> (DocuElem Header <$> (many1 text)) <* eol <?> "hea
 subheader = basicTok L.Subheader *> (DocuElem Subheader <$> (many1 text)) <* eol <?> "subheader"
 
 --a bunch of lines makes a paragraph. A paragraph is ended by two newlines, another element, or eof.
-paragraph = DocuElem Paragraph . intercalate [PlainText "\n"] <$> many1 line <* optional eol <?> "paragraph"
+paragraph = DocuElem Paragraph . concat <$> many1 line <* linebreak <?> "paragraph"
 
 --a line is many text followed by an eol.
-line = many1 text <* eol
+line = do --{{{2
+  --get the contents.
+  contents <- many1 text
+
+  --get newline if present.
+  end <- option [] (eol *> return [PlainText "\n"])
+
+  --add the end to the contents.
+  return $ contents ++ end
+--2}}}
 
 --text can be bold, italic, or plain.
 text = italicText <|> boldText <|> plainText <?> "text"
 
---italic text contains plain or bold parts.
 italicText = RichText Italic <$> (basicTok L.Italic *> many1 (plainText <|> boldText) <* basicTok L.Italic) <?> "italic text"
 
 --bold text contains plain or italic parts.
@@ -61,7 +69,10 @@ boldText = RichText Bold <$> (basicTok L.Bold *> many1 (plainText <|> italicText
 --plain text is just a plaintext token.
 plainText = PlainText <$> textTok <?> "plain text"
 
-eol = basicTok L.EOL
+eol = basicTok L.EOL <?> "newline"
+
+linebreak = basicTok L.Break <?> "linebreak"
+
 --1}}}
 
 parse :: SourceName -> [L.TokenPos] -> Either ParseError [DocuElem]

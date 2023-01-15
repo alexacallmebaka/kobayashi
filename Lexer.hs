@@ -8,7 +8,7 @@ module Lexer
 import Control.Applicative hiding ((<|>),many)
 import Text.Parsec hiding (token, tokens)
 
-data Token = Header | Subheader | Bold | Italic | EOL | PlainText String deriving (Eq, Show)
+data Token = Header | Subheader | Bold | Italic | EOL | Break | PlainText String deriving (Eq, Show)
 
 type TokenPos = (Token, SourcePos)
 
@@ -19,7 +19,7 @@ tokens = many token
 --a token is either header or text related.
 token = do
   p <- getPosition 
-  t <- header <|> text <|> eol
+  t <- header <|> text <|> linebreakOrEol
   return (t,p)
 
 --a single @ denotes a header, and two @ denote a subheader.
@@ -47,12 +47,15 @@ metaChars = "*\\/"
 
 --1}}}
 
+--just one newline is eol, two newlines in line break. We also count newline then eof as break.
+linebreakOrEol = eol *> option EOL ((eol <|> eof) *> return Break) <?> "end of line or linebreak" 
+
 --eol can be many things.
 eol = choice [ try (string "\n\r")
              , try (string "\r\n")
              , string "\n"
              , string "\r"
-             ] *> return EOL <?> "end of line"
+             ] *> return () <?> "end of line"
 
 tokenize :: SourceName -> String -> Either ParseError [TokenPos]
 tokenize = runParser tokens ()
