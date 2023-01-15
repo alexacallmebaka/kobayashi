@@ -45,7 +45,7 @@ buildPage source = do
                   Left err -> print err
                   Right doc -> do
                     let content = concat $ map ((++ "\n") . htmlify) doc
-                        page = "<!DOCTYPE HTML>\n<html>\n<body>\n" ++  content ++ "</body>\n</html>"
+                        page = "<!DOCTYPE HTML>\n<html>\n<body>\n" ++  content ++ "</body>\n</html>\n"
                         outfile = "site" </> source -<.> ".html"
                      in writeFile outfile page
 --1}}}
