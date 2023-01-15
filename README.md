@@ -1,9 +1,9 @@
 # What is Kobayashi?
----
+
 Kobayashi is a tool for generating static websites! She takes `.kby` files and transforms them into `HTML`.
 
 # What is a .kby file?
----
+
 A `.kby` file is a custom markup file format designed to design websites with Kobayashi. The spec is as follows:
 * @text --> header containing "text"
 * @@text --> subheader containing "text"
@@ -53,7 +53,7 @@ If you are ever stuck, list out all possible commands by using
 ```
 
 # What's next?
----
+
 Here is my current list of to-dos before the first release:
 
 * Batch builds.
