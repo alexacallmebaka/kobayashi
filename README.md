@@ -37,17 +37,18 @@ ghc main.hs -outputdir build -o kobayashi
 ```
 
 Depending on how your Haskell environment is set up, you may need to use `-dynamic` when compiling.
+
 You can then build individual `.kby` files with 
 ```
 ./kobayashi build /path/to/file.kby
 ```
 
-The `HTML` file will be output in `site` folder in the directory where the command was run. The file will will have
-the same name as the `.kby` file that was input.
+The `HTML` file will be output in the directory where the command was run. The file will will have the same name 
+as the `.kby` file that was input. You can specify a custom output directory using the `-odir` option.
 
 There is currently no support for batch builds, but there will be by the first release.
 
-If you are ever stuck, list out all possible commands by using 
+If you are ever stuck, list out all possible commands and options by using 
 ```
 ./kobayashi help
 ```
