@@ -13,7 +13,7 @@ A `.kby` file is a custom markup file format designed to design websites with Ko
 Feel free to nest bold and italic text, as well as include them in other elements which have text content (e.g. headers).
 
 Paragraphs are made up of lines of text. To end a paragraph, use two newlines after the final sentence. The "@" character
-can appear in paragraphs no problem, but "\*", "/" and "\" will need to be escaped by prefixing them with a "\".
+can appear in paragraphs no problem, but "\*", "/" and "\\" will need to be escaped by prefixing them with a "\\".
 
 ### Example
 Here is a simple example of a `.kby` file.
