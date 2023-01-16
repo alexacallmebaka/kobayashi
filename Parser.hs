@@ -33,15 +33,16 @@ textTok = tokenParserBase testText where
 --1}}}
 
 --parser def {{{1
-document = many element
+document = many element 
 
-element = header <|> subheader <|> paragraph <?> "document element"
+--document element followed by optional whitespace.
+element = (header <|> subheader <|> paragraph) <* many (eol <|> linebreak) <?> "document element"
 
 --parse a header, and the text contents of the header.
-header = basicTok L.Header *> (DocuElem Header <$> (many1 text)) <* eol <?> "header"
+header = basicTok L.Header *> (DocuElem Header <$> (many1 text)) <?> "header"
 
 --parse a subheader, and the text contents of the header.
-subheader = basicTok L.Subheader *> (DocuElem Subheader <$> (many1 text)) <* eol <?> "subheader"
+subheader = basicTok L.Subheader *> (DocuElem Subheader <$> (many1 text)) <?> "subheader"
 
 --a bunch of lines makes a paragraph. A paragraph is ended by two newlines, another element, or eof.
 paragraph = DocuElem Paragraph . concat <$> many1 line <* linebreak <?> "paragraph"
