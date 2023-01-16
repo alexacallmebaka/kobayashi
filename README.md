@@ -69,6 +69,7 @@ Here is my current list of to-dos before the first release:
 * Add CSS.
 * Pretty `HTML` formatting.
 * Custom output location.
+* Comments.
 
 Some other ideas for after a stable release:
 * Integration with docker.
