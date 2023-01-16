@@ -74,3 +74,4 @@ Here is my current list of to-dos before the first release:
 Some other ideas for after a stable release:
 * Integration with docker.
 * CFG for kby spec.
+* Look into RSS feeds for site.
