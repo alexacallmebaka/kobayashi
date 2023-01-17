@@ -6,14 +6,15 @@ import System.CPUTime (getCPUTime)
 import System.Environment (getArgs)
 import System.Directory (createDirectoryIfMissing)
 import Text.Printf (printf)
+import Data.List (intercalate)
 import Lexer (tokenize)
 import Parser (parse)
 import HTML (htmlify)
 --1}}}
 
 --define args which operate on input.
-dispatch :: Map.Map String (Map.Map String String -> [String] -> IO ()) --{{{1
-dispatch = Map.fromList [("build", \x y-> buildPage x $ head y)]
+dispatch :: Map.Map String (Map.Map String String -> String -> IO ()) --{{{1
+dispatch = Map.fromList [("build", buildPage)]
 --1}}}
 
 options :: [String] --{{{1
@@ -47,9 +48,10 @@ processFlags flags x = (flags, x)
 processCMD :: Map.Map String String -> [String] -> IO () --{{{1
 processCMD _  [] = putStrLn "No commands, nothing to do..."
 processCMD _ ["help"] = help
-processCMD opts (cmd:args) = case Map.lookup cmd dispatch of
-                              Just action -> action opts args
+processCMD opts (cmd:arg:[]) = case Map.lookup cmd dispatch of
+                              Just action -> action opts arg
                               Nothing -> printf "[ERROR] halting due to invalid command: %s\n" cmd
+processCMD _ x = printf "[ERROR] Command with too many arguments: \"%s\". Perhaps options passed out of order?\n" $ intercalate " " x
 --1}}}
 
 --lex, parse, htmlify, then print html or errors.
