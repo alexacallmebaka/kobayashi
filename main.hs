@@ -69,7 +69,7 @@ buildPage flags source = do
       createDirectoryIfMissing True dir
       let content = concat $ map ((++ "\n") . htmlify) doc
           page = "<!DOCTYPE HTML>\n<html>\n<body>\n" ++  content ++ "</body>\n</html>\n"
-          outfile = dir </> source -<.> ".html"
+          outfile = dir </> (takeFileName source) -<.> ".html"
        in writeFile outfile page
   end <- getCPUTime
   let time = fromIntegral (end-start) / (10^12)
