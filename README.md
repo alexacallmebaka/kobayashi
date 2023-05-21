@@ -70,8 +70,9 @@ Here is my current list of to-dos before the first release:
 * Add CSS.
 * Pretty `HTML` formatting.
 * Comments.
+* Math.
 
 Some other ideas for after a stable release:
-* Integration with docker.
+* Integration with docker (i.e. auto-builds).
 * CFG for kby spec.
 * Look into RSS feeds for site.
