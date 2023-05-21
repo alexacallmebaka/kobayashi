@@ -1,13 +1,12 @@
 -- imports {{{1
 import qualified Data.Map as Map
+import Data.List (intercalate)
 import System.IO
 import System.Environment (getArgs)
 import System.CPUTime (getCPUTime)
-import Text.Printf (printf)
 import System.FilePath
 import System.Directory (createDirectoryIfMissing)
 import Text.Printf (printf)
-import Data.List (intercalate)
 import Builder
 --1}}}
 
