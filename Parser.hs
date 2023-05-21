@@ -14,22 +14,22 @@ type Parser a = Parsec [L.TokenPos] () a
 --base for making token parsers. {{{1
 tokenParserBase :: (L.TokenPos -> Maybe a) -> Parser a
 tokenParserBase = tokenPrim (show . fst) advance where
-  --the advance function will grab the position of the next token if it exists. If it doesn't, it will return the last position.
-  advance _ _ ((_, pos) : _) = pos
-  advance pos _ [] = pos
+    --the advance function will grab the position of the next token if it exists. If it doesn't, it will return the last position.
+    advance _ _ ((_, pos) : _) = pos
+    advance pos _ [] = pos
 --1}}}
 
 --parse a simple token from the lexer.
 basicTok :: L.Token -> Parser L.Token --{{{1
 basicTok t = tokenParserBase testTok where
-  testTok (x, y) = if x == t then Just x else Nothing  
+    testTok (x, y) = if x == t then Just x else Nothing  
 --1}}}
 
 --parse a text token from the lexer.
 textTok :: Parser String --{{{1
 textTok = tokenParserBase testText where
-  testText (L.PlainText text, _) = Just text
-  testText _  = Nothing  
+    testText (L.PlainText text, _) = Just text
+    testText _  = Nothing  
 --1}}}
 
 --parser def {{{1
@@ -49,14 +49,14 @@ paragraph = DocuElem Paragraph . concat <$> many1 line <* linebreak <?> "paragra
 
 --a line is many text followed by an eol.
 line = do --{{{2
-  --get the contents.
-  contents <- many1 text
+          --get the contents.
+    contents <- many1 text
 
-  --get newline if present.
-  end <- option [] (eol *> return [PlainText "\n"])
+    --get newline if present.
+    end <- option [] (eol *> return [PlainText "\n"])
 
-  --add the end to the contents.
-  return $ contents ++ end
+    --add the end to the contents.
+    return $ contents ++ end
 --2}}}
 
 --text can be bold, italic, or plain.

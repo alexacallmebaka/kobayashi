@@ -18,9 +18,9 @@ tokens = many token
 
 --a token is either header or text related.
 token = do
-  p <- getPosition 
-  t <- header <|> text <|> linebreakOrEol
-  return (t,p)
+    p <- getPosition 
+    t <- header <|> text <|> linebreakOrEol
+    return (t,p)
 
 --a single @ denotes a header, and two @ denote a subheader.
 header = char '@' *> option Header (char '@' *> return Subheader) <?> "header or subheader"
@@ -52,10 +52,10 @@ linebreakOrEol = eol *> option EOL ((eol <|> eof) *> return Break) <?> "end of l
 
 --eol can be many things.
 eol = choice [ try (string "\n\r")
-             , try (string "\r\n")
-             , string "\n"
-             , string "\r"
-             ] *> return () <?> "end of line"
+    , try (string "\r\n")
+    , string "\n"
+    , string "\r"
+    ] *> return () <?> "end of line"
 
 tokenize :: SourceName -> String -> Either ParseError [TokenPos]
 tokenize = runParser tokens ()

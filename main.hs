@@ -27,8 +27,8 @@ buildSite flags source = do
     printf "Building %s...\n" source
     case buildPage source input of
       Left err -> do
-        putStrLn "[ERROR] halting due to a build-time error:"
-        print err
+          putStrLn "[ERROR] halting due to a build-time error:"
+          print err
       Right page -> do
         let outfile = dir </> (takeFileName source) -<.> ".html"
             in writeFile outfile page
@@ -43,24 +43,24 @@ options = ["-odir"]
 
 help :: IO () --{{{1
 help = mapM_ putStrLn [ "Usage: kobayashi [options] <command> \n"
-                      ,"options"
-                      , "============"
-                      , "-odir /path/to/output/directory:\t specify an output directory for the html files."
-                      ,"\ncommands"
-                      , "============"
-                      , "build /path/to/source.kby:\t build .kby file to html."
-                      ]
+    ,"options"
+    , "============"
+    , "-odir /path/to/output/directory:\t specify an output directory for the html files."
+    ,"\ncommands"
+    , "============"
+    , "build /path/to/source.kby:\t build .kby file to html."
+    ]
 --1}}}
 
 --arg handlers. {{{1
- 
+
 --process flags.
 processFlags :: Map.Map String String -> [String] -> (Map.Map String String, [String]) --{{{2
 processFlags flags x@(flg:arg:xs) = case flg `elem` options of
                                       False -> (flags, x)
                                       True -> processFlags newFlags xs
-                                        where newFlags = Map.insert flg arg flags               
-processFlags flags x = (flags, x)
+                                          where newFlags = Map.insert flg arg flags               
+                                                processFlags flags x = (flags, x)
 --2}}} 
 
 --process command.
@@ -68,8 +68,8 @@ processCMD :: Map.Map String String -> [String] -> IO () --{{{2
 processCMD _  [] = putStrLn "No commands, nothing to do..."
 processCMD _ ["help"] = help
 processCMD opts (cmd:arg:[]) = case Map.lookup cmd dispatch of
-                              Just action -> action opts arg
-                              Nothing -> printf "[ERROR] halting due to invalid command: %s\n" cmd
+                                    Just action -> action opts arg
+                                    Nothing -> printf "[ERROR] halting due to invalid command: %s\n" cmd
 processCMD _ x = printf "[ERROR] Command with too many arguments: \"%s\". Perhaps options passed out of order?\n" $ intercalate " " x
 --2}}}
 
@@ -78,7 +78,7 @@ processCMD _ x = printf "[ERROR] Command with too many arguments: \"%s\". Perhap
 
 --entrypoint
 main = do --{{{1
-  args <- getArgs
-  let (opts, cmd) = processFlags Map.empty args
-  processCMD opts cmd
+    args <- getArgs
+    let (opts, cmd) = processFlags Map.empty args
+    processCMD opts cmd
 --1}}}

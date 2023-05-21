@@ -1,10 +1,10 @@
 --a module for HTML typeclass and related functions.
 module HTML --{{{1
   ( DocuElem (..)
-  , Tag (..)
-  , Text (..)
-  , TextStyle (..)
-  , HTML(..)
+    , Tag (..)
+    , Text (..)
+    , TextStyle (..)
+    , HTML(..)
   ) where
 --1}}}
 
@@ -48,7 +48,7 @@ instance HTML Tag where
 
 --simple elements. {{{1
 instance HTML DocuElem where
-  htmlify (DocuElem tag text) = wrap tag text
+    htmlify (DocuElem tag text) = wrap tag text
 --1}}}
 
 --text styles. {{{1
