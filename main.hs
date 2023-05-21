@@ -4,40 +4,38 @@ import System.IO
 import System.Environment (getArgs)
 import System.CPUTime (getCPUTime)
 import Text.Printf (printf)
-import System.IO
 import System.FilePath
 import System.Directory (createDirectoryIfMissing)
 import Text.Printf (printf)
 import Data.List (intercalate)
-import Lexer (tokenize)
-import Parser (parse)
-import qualified Builder as B
+import Builder
 --1}}}
 
 --define args which operate on input.
 dispatch :: Map.Map String (Map.Map String String -> String -> IO ()) --{{{1
-dispatch = Map.fromList [("build", buildPage)]
+dispatch = Map.fromList [("build", buildSite)]
 --1}}}
 
 --actions {{{1
-buildPage :: Map.Map String String -> String -> IO () --{{{1
-buildPage flags source = do
-    start <- getCPUTime
-    printf "Building %s...\n" source
+buildSite :: Map.Map String String -> String -> IO () --{{{1
+buildSite flags source = do
     input <- readFile source
-    case tokenize source input >>= parse source of
-        Left err -> print err
-        Right doc -> do
-            dir <- return $ case Map.lookup "-odir" flags of
+    let dir = case Map.lookup "-odir" flags of
                 Just custom -> custom
                 Nothing -> "."
-            createDirectoryIfMissing True dir
-            let outfile = dir </> (takeFileName source) -<.> ".html"
-                page = B.buildPage doc
-                in writeFile outfile page
-    end <- getCPUTime
-    let time = fromIntegral (end-start) / (10^12)
-        in printf "Finished in %0.4f sec.\n" (time :: Double)
+    createDirectoryIfMissing True dir
+    start <- getCPUTime
+    printf "Building %s...\n" source
+    case buildPage source input of
+      Left err -> do
+        putStrLn "[ERROR] halting due to a build-time error:"
+        print err
+      Right page -> do
+        let outfile = dir </> (takeFileName source) -<.> ".html"
+            in writeFile outfile page
+        end <- getCPUTime
+        let time = fromIntegral (end-start) / (10^12)
+            in printf "Finished in %0.4f sec.\n" (time :: Double)
 --1}}}
 
 options :: [String] --{{{1

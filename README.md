@@ -71,8 +71,9 @@ Here is my current list of to-dos before the first release:
 * Pretty `HTML` formatting.
 * Comments.
 * Math.
+* CFG for kby spec.
 
 Some other ideas for after a stable release:
 * Integration with docker (i.e. auto-builds).
-* CFG for kby spec.
 * Look into RSS feeds for site.
+* WYSIWYG editor that she can also build from. 

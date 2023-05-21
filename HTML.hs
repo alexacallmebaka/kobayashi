@@ -46,9 +46,10 @@ instance HTML Tag where
     htmlify Paragraph = "p"  
 --1}}}
 
---simple elements.
+--simple elements. {{{1
 instance HTML DocuElem where
   htmlify (DocuElem tag text) = wrap tag text
+--1}}}
 
 --text styles. {{{1
 instance HTML TextStyle where
@@ -56,7 +57,8 @@ instance HTML TextStyle where
     htmlify Italic = "em"
 --1}}}
 
---text elements.
+--text elements. {{{1
 instance HTML Text where
     htmlify (PlainText x) = x
     htmlify (RichText style text)  = wrap style text
+--1}}}
