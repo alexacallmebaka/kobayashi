@@ -1,7 +1,7 @@
 --a parser to parse a stream of tokens from the lexer.
 module Parser
-  ( parse
-  ) where
+    ( parse
+    ) where
 
 import qualified Lexer as L
 import Control.Applicative hiding ((<|>),many,optional)

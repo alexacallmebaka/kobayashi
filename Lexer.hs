@@ -1,9 +1,9 @@
 --lex input file.
 module Lexer
-  ( Token(..)
-  , TokenPos
-  , tokenize
-  ) where
+    ( Token(..)
+    , TokenPos
+    , tokenize
+    ) where
 
 import Control.Applicative hiding ((<|>),many)
 import Text.Parsec hiding (token, tokens)

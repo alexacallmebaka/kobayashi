@@ -1,11 +1,11 @@
 --a module for HTML typeclass and related functions.
 module HTML --{{{1
-  ( DocuElem (..)
+    ( DocuElem (..)
     , Tag (..)
     , Text (..)
     , TextStyle (..)
     , HTML(..)
-  ) where
+    ) where
 --1}}}
 
 class HTML a where
