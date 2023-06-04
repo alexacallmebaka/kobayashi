@@ -1,3 +1,5 @@
+module Main where
+
 -- imports {{{1
 import qualified Data.Map as Map
 import Data.List (intercalate)
@@ -60,7 +62,7 @@ processFlags flags x@(flg:arg:xs) = case flg `elem` options of
                                       False -> (flags, x)
                                       True -> processFlags newFlags xs
                                           where newFlags = Map.insert flg arg flags               
-                                                processFlags flags x = (flags, x)
+processFlags flags x = (flags, x)
 --2}}} 
 
 --process command.

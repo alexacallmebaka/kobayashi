@@ -29,18 +29,17 @@ I do not take criticism.
 
 # Okay, but how do I use Kobayashi?
 Kobayashi is still in the early stages of development, and is unstable. If you want to try her out, you can build the
-source code using the [Glasgow Haskell Compiler](https://www.haskell.org/ghc/).
+source code using the [Glasgow Haskell Compiler](https://www.haskell.org/ghc/) and [Cabal](https://www.haskell.org/cabal/).
 
 ```
-mkdir build
-ghc main.hs -outputdir build -o kobayashi
+cabal build
 ```
 
-Depending on how your Haskell environment is set up, you may need to use `-dynamic` when compiling.
 
-You can then build individual `.kby` files with 
+You can then build individual `.kby` files with. 
+
 ```
-./kobayashi build /path/to/file.kby
+cabal run -- kobayashi build /path/to/file.kby
 ```
 
 The `HTML` file will be output in the directory where the command was run. The file will will have the same name 
@@ -49,8 +48,9 @@ as the `.kby` file that was input. You can specify a custom output directory usi
 There is currently no support for batch builds, but there will be by the first release.
 
 If you are ever stuck, list out all possible commands and options by using 
+
 ```
-./kobayashi help
+cabal run -- kobayashi help
 ```
 
 # What's next?
@@ -72,6 +72,7 @@ Here is my current list of to-dos before the first release:
 * Comments.
 * Math.
 * CFG for kby spec.
+* templates
 
 Some other ideas for after a stable release:
 * Integration with docker (i.e. auto-builds).

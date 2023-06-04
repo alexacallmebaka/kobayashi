@@ -1,0 +1,43 @@
+cabal-version:      2.4
+name:               kobayashi
+version:            0.1.0.0
+
+-- A short (one-line) description of the package.
+synopsis: A static site generator.
+
+-- A longer description of the package.
+-- description:
+
+-- A URL where users can report bugs.
+bug-reports: https://github.com/alexacallmebaka/kobayashi/issues
+
+-- The license under which the package is released.
+-- license:
+author:             james
+maintainer:         50460460+alexacallmebaka@users.noreply.github.com
+
+-- A copyright notice.
+-- copyright:
+-- category:
+extra-source-files:
+    README.md
+
+executable kobayashi
+    main-is:          Main.hs
+
+    -- Modules included in this executable, other than Main.
+    other-modules: Builder,
+                   Lexer,
+                   Parser,
+                   HTML
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    base ^>=4.16.4.0,
+                      parsec,
+                      filepath,
+                      directory,
+                      containers
+
+    hs-source-dirs:   app
+    default-language: Haskell2010
