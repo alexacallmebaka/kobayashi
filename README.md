@@ -29,7 +29,7 @@ I do not take criticism.
 
 # Okay, but how do I use Kobayashi?
 Kobayashi is still in the early stages of development, and is unstable. If you want to try her out, you can build the
-source code using the [Glasgow Haskell Compiler](https://www.haskell.org/ghc/) and [Cabal](https://www.haskell.org/cabal/).
+source code using [Cabal](https://www.haskell.org/cabal/).
 
 ```
 cabal build
