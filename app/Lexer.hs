@@ -1,61 +1,32 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 --lex input file.
-module Lexer
-    ( Token(..)
-    , TokenPos
-    , tokenize
+module Lexer (
     ) where
 
-import Control.Applicative hiding ((<|>),many)
-import Text.Parsec hiding (token, tokens)
+import qualified Token as KBYToken
 
-data Token = Header | Subheader | Bold | Italic | EOL | Break | PlainText String deriving (Eq, Show)
+import qualified Data.Text as T
+import Data.Void
+import Control.Applicative hiding (some, many)
+import Text.Megaparsec
+import Text.Megaparsec.Char
 
-type TokenPos = (Token, SourcePos)
+type Parser = Parsec Void T.Text
 
---a file is several lines of tokens.
+line :: Parser [KBYToken.Token]
+line = many $ choice
+    [ bold
+    , italic
+    , textChar ]
 
-tokens = many token
+-- inline stuff {{{1
+bold :: Parser KBYToken.Token
+bold = KBYToken.Bold <$ char '*'
 
---a token is either header or text related.
-token = do
-    p <- getPosition 
-    t <- header <|> text <|> linebreakOrEol
-    return (t,p)
+italic :: Parser KBYToken.Token
+italic = KBYToken.Italic <$ char '/'
 
---a single @ denotes a header, and two @ denote a subheader.
-header = char '@' *> option Header (char '@' *> return Subheader) <?> "header or subheader"
-
---text {{{1
-
---text can be bold, italic or plain.
-text = bold <|> italic <|> PlainText <$> many1 textChar <?> "text"
-
--- * is a bold token.
-bold = string "*" *> return Bold <?> "bold"
-
--- / is an italic token.
-italic = string "/" *> return Italic <?> "italic"
-
---a text char can either be an escaped char or just any valid char.
-textChar = escapedChar <|> noneOf (metaChars ++ "\n\r") <?> "valid text character"
-
---an escaped char is prefixed with a \.
-escapedChar = char '\\' *> noneOf "\n\r" <?> "escape"
-
---metachars are anything used in text streams to denote something else.
-metaChars = "*\\/"
-
---1}}}
-
---just one newline is eol, two newlines in line break. We also count newline then eof as break.
-linebreakOrEol = eol *> option EOL ((eol <|> eof) *> return Break) <?> "end of line or linebreak" 
-
---eol can be many things.
-eol = choice [ try (string "\n\r")
-    , try (string "\r\n")
-    , string "\n"
-    , string "\r"
-    ] *> return () <?> "end of line"
-
-tokenize :: SourceName -> String -> Either ParseError [TokenPos]
-tokenize = runParser tokens ()
+textChar :: Parser KBYToken.Token
+textChar = KBYToken.TextChar . T.singleton <$> (optional (char '\\') *> printChar)
+-- 1}}}
