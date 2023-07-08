@@ -4,7 +4,7 @@
 module Lexer (
     ) where
 
-import qualified Token as KBYToken
+import KBYToken
 
 import qualified Data.Text as T
 import Data.Void
@@ -24,23 +24,23 @@ type Parser = Parsec Void T.Text
 headerPrefix :: Parser ()
 headerPrefix = () <$ char '@' 
 
-header :: Parser KBYToken.Token
-header = headerPrefix *> option KBYToken.BeginHeader (KBYToken.BeginSubheader <$ headerPrefix)
+header :: Parser KBYToken
+header = headerPrefix *> option BeginHeader (BeginSubheader <$ headerPrefix)
 -- 1}}}
 
-line :: Parser [KBYToken.Token]
+line :: Parser [KBYToken]
 line = many $ choice
     [ bold
     , italic
     , textChar ]
 
 -- inline stuff {{{1
-bold :: Parser KBYToken.Token
-bold = KBYToken.Bold <$ char '*' <?> "bold"
+bold :: Parser KBYToken
+bold = Bold <$ char '*' <?> "bold"
 
-italic :: Parser KBYToken.Token
-italic = KBYToken.Italic <$ char '/' <?> "italic"
+italic :: Parser KBYToken
+italic = Italic <$ char '/' <?> "italic"
 
-textChar :: Parser KBYToken.Token
-textChar = KBYToken.TextChar . T.singleton <$> (optional (char '\\') *> printChar)
+textChar :: Parser KBYToken
+textChar = TextChar . T.singleton <$> (optional (char '\\') *> printChar)
 -- 1}}}
