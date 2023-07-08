@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- todo errors, lexFile function
+-- todo: errors (i.e. labels), lexFile function
 
 --lex input file.
 module Lexer (
@@ -60,5 +60,5 @@ textChar = TextChar . T.singleton <$> (optional (char '\\') *> printChar)
 -- 1}}}
 
 endOfBlockOrSpace :: Parser KBYToken
-endOfBlockOrSpace = eol *> option (TextChar " ") (EndOfBlock <$ eol)
+endOfBlockOrSpace = eol *> option (TextChar " ") (EndOfBlock <$ some eol)
 
