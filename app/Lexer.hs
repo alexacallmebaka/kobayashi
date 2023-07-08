@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
--- todo: errors (i.e. labels), lexFile function
+-- todo: lexFile function
 
 --lex input file.
 module Lexer (
@@ -34,10 +34,10 @@ block = choice
 
 -- headers {{{2
 headerPrefix :: Parser ()
-headerPrefix = () <$ char '@' 
+headerPrefix = () <$ char '@'
 
 header :: Parser KBYToken
-header = headerPrefix *> option BeginHeader (BeginSubheader <$ headerPrefix)
+header = headerPrefix *> option BeginHeader (BeginSubheader <$ headerPrefix) <?> "header or subheader"
 -- 2}}}
 
 --1}}}
@@ -60,5 +60,5 @@ textChar = TextChar . T.singleton <$> (optional (char '\\') *> printChar)
 -- 1}}}
 
 endOfBlockOrSpace :: Parser KBYToken
-endOfBlockOrSpace = eol *> option (TextChar " ") (EndOfBlock <$ some eol)
+endOfBlockOrSpace = eol *> option (TextChar " ") (EndOfBlock <$ some eol) <?> "single newline or end of block"
 
