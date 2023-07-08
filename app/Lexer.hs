@@ -21,11 +21,12 @@ import Text.Megaparsec.Char
 
 type Parser = Parsec Void T.Text
 
-file :: Parser [KBYToken]
-file = many $ choice
+file :: Parser [KBYToken] --{{{1
+file = (many $ choice
                 [ block
                 , inline
-                , endOfBlockOrSpace ]
+                , endOfBlockOrSpace ]) <* eof
+--1}}}
 
 -- block stuff {{{1
 block :: Parser KBYToken
@@ -62,3 +63,5 @@ textChar = TextChar . T.singleton <$> (optional (char '\\') *> printChar)
 endOfBlockOrSpace :: Parser KBYToken
 endOfBlockOrSpace = eol *> option (TextChar " ") (EndOfBlock <$ some eol) <?> "single newline or end of block"
 
+tokenize :: String -> T.Text -> Either (ParseErrorBundle T.Text Void) [KBYToken]
+tokenize = runParser file
