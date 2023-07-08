@@ -8,4 +8,5 @@ data KBYToken = BeginHeader
               | BeginSubheader
               | Bold 
               | Italic 
-              | TextChar T.Text deriving (Eq, Show)
+              | TextChar T.Text
+              | EndOfBlock deriving (Eq, Show)
