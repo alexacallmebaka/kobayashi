@@ -31,6 +31,7 @@ file = many $ choice
 block :: Parser KBYToken
 block = choice
     [ header ]
+
 -- headers {{{2
 headerPrefix :: Parser ()
 headerPrefix = () <$ char '@' 
@@ -38,6 +39,7 @@ headerPrefix = () <$ char '@'
 header :: Parser KBYToken
 header = headerPrefix *> option BeginHeader (BeginSubheader <$ headerPrefix)
 -- 2}}}
+
 --1}}}
 
 -- inline stuff {{{1
