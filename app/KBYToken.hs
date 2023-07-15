@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module KBYToken
     ( KBYToken(..)
@@ -16,7 +16,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Pos
 import Text.Megaparsec.Stream
 
--- tokens {{{1
+--tokens {{{1
 data KBYToken = BeginHeader
               | BeginSubheader
               | Bold 
