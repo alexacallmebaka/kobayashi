@@ -1,5 +1,6 @@
 --lex input file.
 module Lexer (
+    tokenize
     ) where
 
 --imports {{{1
@@ -29,7 +30,7 @@ block :: Parser KBYWithInfo
 block = choice
     [ header <?> "header or subheader" ]
 
--- headers {{{2
+--headers {{{2
 headerPrefix :: Parser ()
 headerPrefix = () <$ char '@'
 
@@ -43,7 +44,7 @@ header = do
                            BeginSubheader -> "@@"
     return $ KBYWithInfo startPos txt tok
     
--- 2}}}
+--2}}}
 
 --1}}}
 
@@ -69,7 +70,7 @@ textChar = do
                 '\00' -> T.singleton trueChar
                 x -> T.pack $ x:trueChar:[]
     return $ KBYWithInfo startPos txt TextChar
--- 1}}}
+--1}}}
 
 endOfBlockOrSpace :: Parser KBYWithInfo
 endOfBlockOrSpace = do 
