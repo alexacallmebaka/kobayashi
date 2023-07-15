@@ -18,16 +18,37 @@ import qualified KBYDoc as KD
 
 type Parser = Parsec Void KT.KBYStream
 
-data InlineObj = PlainText
+data InlineID = PlainText
                    | Bold
                    | Italic deriving (Eq, Generic)
 
-instance Hashable InlineObj
+instance Hashable InlineID
 
-basicInlineToken :: KT.KBYToken -> Parser KT.KBYToken
-basicInlineToken tok = token test Set.empty
+file :: Parser KD.Document
+file = some blockElem
+
+blockElem :: Parser KD.BlockElem
+blockElem = choice [ oneTokenBlock KT.BeginHeader (\x -> KD.Header x)
+                   , oneTokenBlock KT.BeginSubheader (\x -> KD.Subheader x)
+                   , paragraph ]
+
+paragraph :: Parser KD.BlockElem
+paragraph = KD.Paragraph <$> some (inlineElem inlineChoices) <* endOfBlock
+
+oneTokenBlock :: KT.KBYToken -> ([KD.InlineElem] -> KD.BlockElem) -> Parser KD.BlockElem
+oneTokenBlock tok blockCon = do
+        basicToken tok
+        content <- many $ inlineElem inlineChoices
+        endOfBlock
+        return $ blockCon content
+        
+endOfBlock :: Parser ()
+endOfBlock = (() <$ basicToken KT.EndOfBlock) <|> eof
+
+--inline stuff {{{1
+basicToken :: KT.KBYToken -> Parser KT.KBYToken
+basicToken tok = token test Set.empty
     where test ( KT.KBYWithInfo _ _ t ) = if t == tok then Just t else Nothing
-          test _ = Nothing
 
 textChar :: Parser T.Text
 textChar = token test Set.empty
@@ -37,18 +58,20 @@ textChar = token test Set.empty
 plainText :: Parser KD.InlineElem
 plainText = KD.PlainText . T.concat <$> some textChar
 
-inlineElems :: HM.HashMap InlineObj (Parser KD.InlineElem)
-inlineElems = HM.fromList [ (Bold, wrapsText (\x -> KD.Bold x) KT.Bold Bold)
+inlineChoices :: HM.HashMap InlineID (Parser KD.InlineElem)
+inlineChoices = HM.fromList [ (Bold, wrapsText (\x -> KD.Bold x) KT.Bold Bold)
                           , (Italic, wrapsText (\x -> KD.Italic x) KT.Italic Italic)
                           , (PlainText, plainText) ]
 
-inlineElem :: HM.HashMap InlineObj (Parser KD.InlineElem) -> Parser KD.InlineElem
-inlineElem valid = choice valid
+inlineElem :: HM.HashMap InlineID (Parser KD.InlineElem) -> Parser KD.InlineElem
+inlineElem elems = choice elems
 
-wrapsText :: ([KD.InlineElem] -> KD.InlineElem) -> KT.KBYToken -> InlineObj -> Parser KD.InlineElem
-wrapsText wrapper tok obj = wrapper <$> between wrap wrap (many $ inlineElem valid)
-    where wrap = basicInlineToken tok
-          valid = HM.delete obj inlineElems
-        
-parseTokens :: String -> KT.KBYStream -> Either (ParseErrorBundle KT.KBYStream Void) [KD.InlineElem]
-parseTokens = runParser (many $ inlineElem inlineElems)
+wrapsText :: ([KD.InlineElem] -> KD.InlineElem) -> KT.KBYToken -> InlineID -> Parser KD.InlineElem
+wrapsText wrapper tok obj = wrapper <$> between wrap wrap (some $ choice valid)
+    where wrap = basicToken tok
+          --need this because of how between operates underneath the hood.
+          valid = HM.delete obj inlineChoices
+ --1}}}
+ --
+parseTokens :: String -> KT.KBYStream -> Either (ParseErrorBundle KT.KBYStream Void) KD.Document
+parseTokens = runParser file
