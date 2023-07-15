@@ -28,14 +28,17 @@ executable kobayashi
 
     -- Modules included in this executable, other than Main.
     other-modules: Lexer,
-                   KBYToken
+                   Parser,
+                   KBYToken,
+                   KBYDoc
                    --Builder,
                    --Parser,
                    --HTML
 
     -- LANGUAGE extensions used by modules in this package.
     other-extensions: TypeFamilies,
-                      RecordWildCards
+                      RecordWildCards,
+                      DeriveGeneric
 
     build-depends:    base ^>=4.16.4.0,
                       megaparsec ^>=9.3.1,
@@ -44,6 +47,8 @@ executable kobayashi
                       directory ^>=1.3.8.1,
                       containers ^>=0.6.7,
                       text ^>=2.0.2,
+                      unordered-containers ^>=0.2.19.1,
+                      hashable ^>=1.4.2.0
 
     hs-source-dirs:   app
     default-language: Haskell2010
