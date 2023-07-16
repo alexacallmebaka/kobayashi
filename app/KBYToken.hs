@@ -7,6 +7,7 @@ module KBYToken
     , KBYStream(..)
     ) where
 
+--imports {{{1
 import qualified Data.Text as T
 import qualified Data.List.NonEmpty as NE
 import Data.Proxy (Proxy(..))
@@ -15,8 +16,9 @@ import Data.List
 import Text.Megaparsec
 import Text.Megaparsec.Pos
 import Text.Megaparsec.Stream
+--1}}}
 
---tokens {{{1
+--types {{{1
 data KBYToken = BeginHeader
               | BeginSubheader
               | Bold 
@@ -24,15 +26,25 @@ data KBYToken = BeginHeader
               | EndOfBlock 
               | TextChar deriving (Eq, Show, Ord)
 
+--a token with a starting position and text representation.
 data KBYWithInfo = KBYWithInfo
     { startPos :: SourcePos
     , asTxt :: T.Text
     , innerToken :: KBYToken
     } deriving (Eq, Show, Ord)
 
+--a token stream
 data KBYStream = KBYStream { unStream :: [KBYWithInfo] } deriving (Eq, Show)
+--1}}}
 
-instance Stream KBYStream where
+--stream instance {{{1
+
+--standard stream {{{2
+
+--see: https://hackage.haskell.org/package/megaparsec-9.4.1/docs/Text-Megaparsec-Stream.html#t:Stream
+--and: https://markkarpov.com/tutorial/megaparsec.html#working-with-custom-input-streams
+
+instance Stream KBYStream where 
     type Token KBYStream = KBYWithInfo
     type Tokens KBYStream = [KBYWithInfo]
 
@@ -55,10 +67,18 @@ instance Stream KBYStream where
 
     takeWhile_ pred s = (fst pair, KBYStream . snd $ pair)
         where pair = span pred $ unStream s
+--2}}}
 
+--stream that can be printed {{{2
+--see: https://hackage.haskell.org/package/megaparsec-9.4.1/docs/Text-Megaparsec-Stream.html#t:VisualStream
+--
 instance VisualStream KBYStream where
     showTokens Proxy = foldl (\acc x -> acc ++ (T.unpack . asTxt $ x)) ""
     tokensLength Proxy = foldl (\acc x -> acc + (T.length . asTxt $ x)) 0 
+--2}}}
+
+--stream with some useful stuff for error messages {{{2
+--see: https://hackage.haskell.org/package/megaparsec-9.4.1/docs/Text-Megaparsec-Stream.html#t:TraversableStream
 
 instance TraversableStream KBYStream where
     --this is not very well documented, so I am just trying something and seeing how it breaks lol
@@ -78,3 +98,5 @@ instance TraversableStream KBYStream where
                                                        startLine = getLine . head . unStream $ pstateInput
                                                        restOfLine = fst $ takeWhile_ (\x -> (getLine x) == startLine ) pstateInput
                                                    in foldl (\acc x -> acc ++ (T.unpack . asTxt $ x)) "" restOfLine
+--2}}}
+--1}}}
