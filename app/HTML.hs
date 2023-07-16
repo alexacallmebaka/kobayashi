@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 --a module for HTML typeclass and related functions.
 
 module HTML --{{{1
@@ -9,13 +11,19 @@ module HTML --{{{1
     ) where
 --1}}}
 
+import Data.HashSet as HS
+import Data.Hashable
+import GHC.Generics (Generic)
+
 --types {{{1
 --html tags
 data Tag = Strong
          | Em
          | H1
          | H2
-         | P
+         | P deriving (Generic, Eq)
+
+instance Hashable Tag
 
 instance Show Tag where
     show Strong = "strong"
@@ -24,6 +32,12 @@ instance Show Tag where
     show H2 = "h2"
     show P = "p"
 --1}}}
+
+standaloneTags :: HS.HashSet Tag
+standaloneTags = HS.fromList [P]
+
+isStandalone :: Tag -> Bool
+isStandalone x = HS.member x standaloneTags
 
 class HTML a where
     htmlify :: a -> String
@@ -34,8 +48,10 @@ htmlFold = foldl (\acc x -> acc ++ htmlify x) ""
 
 --generate start and end tag strings from a tag.
 genTags :: Tag -> (String, String)
-genTags x = ("<" ++ tag ++ ">", "</" ++ tag ++ ">")
+genTags x = ("<" ++ tag ++ ">" ++ nline, nline ++ "</" ++ tag ++ ">")
             where tag = show x
+                  --certain tags should be formatted on their own line.
+                  nline = if isStandalone x then "\n"  else ""
 
 --wrap a list of inner html in tags from outer html.
 wrap :: (HTML a) => [a] -> Tag -> String
