@@ -1,64 +1,43 @@
 --a module for HTML typeclass and related functions.
+
 module HTML --{{{1
-    ( DocuElem (..)
-    , Tag (..)
-    , Text (..)
-    , TextStyle (..)
-    , HTML(..)
+    ( HTML(..)
+    , Tag(..)
+    , wrap
+    , htmlFold
+    , genTags
     ) where
+--1}}}
+
+--types {{{1
+--html tags
+data Tag = Strong
+         | Em
+         | H1
+         | H2
+         | P
+
+instance Show Tag where
+    show Strong = "strong"
+    show Em = "em"
+    show H1 = "h1"
+    show H2 = "h2"
+    show P = "p"
 --1}}}
 
 class HTML a where
     htmlify :: a -> String
 
---text. {{{1
-data TextStyle = Bold | Italic deriving Show
-
-data Text = RichText TextStyle [Text] | PlainText String deriving Show
---1}}}
-
---basic tagged elements. {{{1
-data Tag = Header | Subheader | Paragraph deriving Show
-
-data DocuElem = DocuElem Tag [Text] deriving Show
---1}}}
-
---helper functions. {{{1
-
 --fold up a list of html elements into an HTML string.
-htmlFold :: (HTML a) => [a] -> String --{{{2
+htmlFold :: (HTML a) => [a] -> String 
 htmlFold = foldl (\acc x -> acc ++ htmlify x) ""
---2}}}
+
+--generate start and end tag strings from a tag.
+genTags :: Tag -> (String, String)
+genTags x = ("<" ++ tag ++ ">", "</" ++ tag ++ ">")
+            where tag = show x
 
 --wrap a list of inner html in tags from outer html.
-wrap :: (HTML a, HTML b) => a -> [b] -> String --{{{2
-wrap outer inner = "<" ++ htmlify outer ++ ">" ++ htmlFold inner ++ "</" ++ htmlify outer ++ ">"
---2}}}
-
---1}}}
-
---define how things transform to html.
-
---basic tags. {{{1
-instance HTML Tag where
-    htmlify Header = "h1"  
-    htmlify Subheader = "h2"  
-    htmlify Paragraph = "p"  
---1}}}
-
---simple elements. {{{1
-instance HTML DocuElem where
-    htmlify (DocuElem tag text) = wrap tag text
---1}}}
-
---text styles. {{{1
-instance HTML TextStyle where
-    htmlify Bold = "strong"
-    htmlify Italic = "em"
---1}}}
-
---text elements. {{{1
-instance HTML Text where
-    htmlify (PlainText x) = x
-    htmlify (RichText style text)  = wrap style text
---1}}}
+wrap :: (HTML a) => [a] -> Tag -> String
+wrap inner tag = open ++ (htmlFold inner) ++ close
+               where (open, close) = genTags tag

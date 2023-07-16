@@ -30,10 +30,8 @@ executable kobayashi
     other-modules: Lexer,
                    Parser,
                    KBYToken,
-                   KBYDoc
-                   --Builder,
-                   --Parser,
-                   --HTML
+                   KBYDoc,
+                   HTML
 
     -- LANGUAGE extensions used by modules in this package.
     other-extensions: TypeFamilies,
