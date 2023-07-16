@@ -102,8 +102,8 @@ plainText = KD.PlainText . T.concat <$> some textChar
 --containing " is bold".
 inlineChoices :: HM.HashMap InlineID (Parser KD.InlineElem)
 inlineChoices = HM.fromList [ (Bold, wrapsText (\x -> KD.Bold x) KT.Bold Bold)
-                          , (Italic, wrapsText (\x -> KD.Italic x) KT.Italic Italic)
-                          , (PlainText, plainText) ]
+                            , (Italic, wrapsText (\x -> KD.Italic x) KT.Italic Italic)
+                            , (PlainText, plainText) ]
 
 --simply choose an inline elem to parse from a given hashmap.
 inlineElem :: HM.HashMap InlineID (Parser KD.InlineElem) -> Parser KD.InlineElem
