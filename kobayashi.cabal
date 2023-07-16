@@ -3,7 +3,7 @@ name:               kobayashi
 version:            0.1.0.0
 
 -- A short (one-line) description of the package.
-synopsis: A static site generator.
+synopsis: A static site builder.
 
 -- A longer description of the package.
 -- description:
