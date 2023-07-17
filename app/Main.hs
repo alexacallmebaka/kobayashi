@@ -3,6 +3,7 @@ module Main where
 -- imports {{{1
 import qualified Data.Map as Map
 import Data.List (intercalate)
+import Data.Text as T (pack)
 import System.IO
 import System.Environment (getArgs)
 import System.CPUTime (getCPUTime)
@@ -27,7 +28,7 @@ buildSite flags source = do
     createDirectoryIfMissing True dir
     start <- getCPUTime
     printf "Building %s...\n" source
-    case buildPage source input of
+    case buildPage source (T.pack input) of
       Left err -> do
           putStrLn "[ERROR] halting due to a build-time error:"
           print err
