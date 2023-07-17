@@ -18,16 +18,25 @@ import Text.Megaparsec.Debug
 
 type Parser = Parsec Void T.Text
 
-file :: Parser KBYStream --{{{1
-file = KBYStream <$> (many $ choice
-                            [ block
-                            , inline
-                            , endOfBlockOrSpace ]) <* eof
---1}}}
+file :: Parser KBYStream
+file = KBYStream . concat <$> some (choice [psuedoBlock, block])
 
 -- block stuff {{{1
-block :: Parser KBYWithInfo
-block = choice
+-- right now our only true block is a paragraph.
+block :: Parser [KBYWithInfo]
+block = do 
+    (contents, eob) <- someTill_ inline (try endOfBlock)
+    return $ contents ++ [eob]
+
+--elements that act as block elements but functionally take up one line.
+psuedoBlock :: Parser [KBYWithInfo]
+psuedoBlock = do
+    prefix <- psuedoBlockPrefix
+    (contents, eob) <- someTill_ inline (try endOfBlock)
+    return $ [prefix] ++ contents ++ [eob]
+
+psuedoBlockPrefix :: Parser KBYWithInfo
+psuedoBlockPrefix = choice
     [ header <?> "header or subheader" ]
 
 --headers {{{2
@@ -65,22 +74,18 @@ textChar :: Parser KBYWithInfo
 textChar = do 
     startPos <- getSourcePos
     escaped <- (option '\00' (char '\\'))
-    trueChar <- printChar
-    let txt = case escaped of
-                '\00' -> T.singleton trueChar
-                x -> T.pack $ x:trueChar:[]
-    return $ KBYWithInfo startPos txt TextChar
+    txt <- printChar <|> newline
+    return $ KBYWithInfo startPos (T.singleton txt) TextChar
 --1}}}
 
-endOfBlockOrSpace :: Parser KBYWithInfo
-endOfBlockOrSpace = do 
+endOfBlock :: Parser KBYWithInfo
+endOfBlock = do
     startPos <- getSourcePos
     eol
-    tok <- option TextChar (EndOfBlock <$ some eol)
-    let txt = T.pack $ case tok of
-                           TextChar -> " "
-                           EndOfBlock -> "\\n\\n"
-    return $ KBYWithInfo startPos txt tok
+    (() <$ eol) <|> eof
+    let txt = T.pack "\\n\\n"
+    return $ KBYWithInfo startPos txt EndOfBlock
+
 
 tokenize :: String -> T.Text -> Either (ParseErrorBundle T.Text Void) KBYStream 
 tokenize = runParser file
