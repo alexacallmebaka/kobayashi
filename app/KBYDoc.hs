@@ -10,6 +10,8 @@ import HTML
 --types {{{1
 type Document = [BlockElem]
 
+type LinkSource = [InlineElem]
+
 data BlockElem = Paragraph [InlineElem]
                 | Header [InlineElem]
                 | Subheader [InlineElem] deriving (Eq, Show, Ord)
@@ -17,6 +19,7 @@ data BlockElem = Paragraph [InlineElem]
 --inline elements that represent rich text can be arbitrarily nested.
 data InlineElem = Bold [InlineElem]
                 | Italic [InlineElem]
+                | Link [InlineElem] LinkSource
                 | PlainText T.Text deriving (Eq, Show, Ord)
 --1}}}
 
@@ -29,4 +32,5 @@ instance HTML BlockElem where
 instance HTML InlineElem where
     htmlify (Bold inner) = wrap inner Strong
     htmlify (Italic inner) = wrap inner Em
+    htmlify (Link title src) = wrap title (A . concatMap htmlify $ src)
     htmlify (PlainText inner) = T.unpack inner 

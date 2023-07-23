@@ -47,7 +47,7 @@ blockElem = choice [ oneTokenBlock KT.BeginHeader (\x -> KD.Header x)
                    , paragraph ]
 
 paragraph :: Parser KD.BlockElem
-paragraph = KD.Paragraph <$> some (inlineElem inlineChoices) <* endOfBlock
+paragraph = KD.Paragraph <$> some inlineElem <* endOfBlock
 
 --generic parser for blocks that begin with a single token and are ended by an
 --EndOfBlock token.
@@ -63,7 +63,7 @@ oneTokenBlock tok blockCon = do
         basicToken tok
 
         --content is just a bunch of inlines (at least one)
-        content <- some $ inlineElem inlineChoices
+        content <- some inlineElem
 
         --get block end
         endOfBlock
@@ -86,6 +86,15 @@ basicToken :: KT.KBYToken -> Parser KT.KBYToken
 basicToken tok = token test Set.empty
     where test ( KT.KBYWithInfo _ _ t ) = if t == tok then Just t else Nothing
 
+link :: Parser KD.InlineElem
+link = do
+    basicToken KT.LinkStart
+    title <- some $ inlineElem
+    basicToken KT.LinkSep
+    src <- some plainText
+    basicToken KT.LinkEnd
+    return $ KD.Link title src
+
 --parse a plaintext character
 textChar :: Parser T.Text
 textChar = token test Set.empty
@@ -100,14 +109,14 @@ plainText = KD.PlainText . T.concat <$> some textChar
 --tokens properly. for example, we will see "*word* is bold" as one bold
 --word as opposed to starting a bold, and then another bold nested inside
 --containing " is bold".
-inlineChoices :: HM.HashMap InlineID (Parser KD.InlineElem)
-inlineChoices = HM.fromList [ (Bold, wrapsText (\x -> KD.Bold x) KT.Bold Bold)
+basicInlineChoices :: HM.HashMap InlineID (Parser KD.InlineElem)
+basicInlineChoices = HM.fromList [ (Bold, wrapsText (\x -> KD.Bold x) KT.Bold Bold)
                             , (Italic, wrapsText (\x -> KD.Italic x) KT.Italic Italic)
                             , (PlainText, plainText) ]
 
 --simply choose an inline elem to parse from a given hashmap.
-inlineElem :: HM.HashMap InlineID (Parser KD.InlineElem) -> Parser KD.InlineElem
-inlineElem elems = choice elems
+basicInlineElem :: HM.HashMap InlineID (Parser KD.InlineElem) -> Parser KD.InlineElem
+basicInlineElem elems = choice elems
 
 --generic parser for inline elements that are wrapped in the same starting and ending token.
 --allows for arbitrary nesting on inline elements (e.g. a bold sentence with only some italic words.)
@@ -119,10 +128,15 @@ wrapsText :: ([KD.InlineElem] -> KD.InlineElem)
           -> InlineID 
 --          ^^the key in the hashmap that identifies the  parser for the KT.KBYToken passed.
           -> Parser KD.InlineElem
+
 wrapsText wrapper tok obj = wrapper <$> between wrap wrap (some $ choice valid)
     where wrap = basicToken tok
           --delete current token from hashmap to avoid matching issues
-          valid = HM.delete obj inlineChoices
+          valid = HM.delete obj basicInlineChoices
+
+inlineElem :: Parser KD.InlineElem
+inlineElem = choice [basicInlineElem basicInlineChoices, link]
+
  --1}}}
 
 parseTokens :: String -> KT.KBYStream -> Either (ParseErrorBundle KT.KBYStream Void) KD.Document

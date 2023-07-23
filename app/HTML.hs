@@ -13,14 +13,19 @@ module HTML --{{{1
 
 import Data.HashSet as HS
 import Data.Hashable
+import qualified Data.Text as T
 import GHC.Generics (Generic)
 
 --types {{{1
 --html tags
+
+type LinkSource = String
+
 data Tag = Strong
          | Em
          | H1
          | H2
+         | A LinkSource
          | P deriving (Generic, Eq)
 
 instance Hashable Tag
@@ -31,6 +36,7 @@ instance Show Tag where
     show H1 = "h1"
     show H2 = "h2"
     show P = "p"
+    show (A _) = "a"
 --1}}}
 
 standaloneTags :: HS.HashSet Tag
@@ -48,6 +54,9 @@ htmlFold = foldl (\acc x -> acc ++ htmlify x) ""
 
 --generate start and end tag strings from a tag.
 genTags :: Tag -> (String, String)
+genTags (A src) = (start, "</a>")
+                where start = "<a href=\"" ++ src ++ "\">"
+
 genTags x = ("<" ++ tag ++ ">" ++ nline, nline ++ "</" ++ tag ++ ">")
             where tag = show x
                   --certain tags should be formatted on their own line.

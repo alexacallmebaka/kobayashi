@@ -22,7 +22,10 @@ import Text.Megaparsec.Stream
 data KBYToken = BeginHeader
               | BeginSubheader
               | Bold 
-              | Italic 
+              | Italic
+              | LinkStart
+              | LinkEnd
+              | LinkSep
               | EndOfBlock 
               | TextChar deriving (Eq, Show, Ord)
 

@@ -62,6 +62,9 @@ inline :: Parser KBYWithInfo
 inline = choice
     [ basicInline '*' Bold <?> "bold"
     , basicInline '/' Italic <?> "italic"
+    , basicInline '[' LinkStart <?> "link start"
+    , basicInline ']' LinkEnd <?> "link end"
+    , basicInline '|' LinkSep <?> "link separator"
     , textChar <?> "printable unicode char"]
 
 basicInline :: Char -> KBYToken -> Parser KBYWithInfo
@@ -73,7 +76,7 @@ basicInline tokChar tok = do
 textChar :: Parser KBYWithInfo
 textChar = do 
     startPos <- getSourcePos
-    escaped <- (option '\00' (char '\\'))
+    option '\00' (char '\\')
     txt <- printChar <|> newline
     return $ KBYWithInfo startPos (T.singleton txt) TextChar
 --1}}}
