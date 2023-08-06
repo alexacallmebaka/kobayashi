@@ -98,8 +98,14 @@ instance TraversableStream KBYStream where
                                             tokenList = unStream pstateInput
                                             (pre, post) = splitAt offset tokenList
                                             newSourcePos = startPos . head $ post
+                                            
+                                            --get line number where error occurred.
                                             badLine = sourceLine newSourcePos
+
+                                            --helper func to extract line number from KBYWithInfo
                                             getLine = sourceLine . startPos
+
+                                            --get all tokens on the line with error.
                                             line = foldl (\acc x -> acc ++ (T.unpack . asTxt $ x)) "" stream
                                               where stream = [x | x <- tokenList, getLine x == badLine]
 --2}}}
