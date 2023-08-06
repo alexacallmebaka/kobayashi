@@ -31,7 +31,7 @@ buildSite flags source = do
     case buildPage source (T.pack input) of
       Left err -> do
           putStrLn "[ERROR] halting due to a build-time error:"
-          print err
+          putStr err
       Right page -> do
         let outfile = dir </> (takeFileName source) -<.> ".html"
             in writeFile outfile page

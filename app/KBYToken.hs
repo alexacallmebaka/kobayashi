@@ -95,11 +95,12 @@ instance TraversableStream KBYStream where
                                             }
                                         )
                                         where
-                                            (pre, post) = splitAt offset $ unStream pstateInput
-                                            newSourcePos = startPos . head $ pre
-                                            line = let getLine = sourceLine . startPos
-                                                       startLine = getLine . head . unStream $ pstateInput
-                                                       restOfLine = fst $ takeWhile_ (\x -> (getLine x) == startLine ) pstateInput
-                                                   in foldl (\acc x -> acc ++ (T.unpack . asTxt $ x)) "" restOfLine
+                                            tokenList = unStream pstateInput
+                                            (pre, post) = splitAt offset tokenList
+                                            newSourcePos = startPos . head $ post
+                                            badLine = sourceLine newSourcePos
+                                            getLine = sourceLine . startPos
+                                            line = foldl (\acc x -> acc ++ (T.unpack . asTxt $ x)) "" stream
+                                              where stream = [x | x <- tokenList, getLine x == badLine]
 --2}}}
 --1}}}
