@@ -26,14 +26,14 @@ file = KBYStream . concat <$> some (choice [psuedoBlock, block])
 block :: Parser [KBYWithInfo]
 block = do 
     (contents, eob) <- someTill_ inline (try endOfBlock)
-    return $ contents ++ [eob]
+    return $ (concat contents) ++ [eob]
 
 --elements that act as block elements but functionally take up one line.
 psuedoBlock :: Parser [KBYWithInfo]
 psuedoBlock = do
     prefix <- psuedoBlockPrefix
     (contents, eob) <- someTill_ inline (try endOfBlock)
-    return $ [prefix] ++ contents ++ [eob]
+    return $ [prefix] ++ (concat contents) ++ [eob]
 
 psuedoBlockPrefix :: Parser KBYWithInfo
 psuedoBlockPrefix = choice
@@ -58,13 +58,16 @@ header = do
 --1}}}
 
 -- inline stuff {{{1
-inline :: Parser KBYWithInfo
-inline = choice
+
+--either a link or a single rich text car, we use singleton lists so types match up.
+--links are lexed separately to avoid reading in / as italic in the link source.
+inline :: Parser [KBYWithInfo]
+inline = try link <|> (richTextChar >>= (\x -> return $ x:[]))
+
+richTextChar :: Parser KBYWithInfo
+richTextChar = choice
     [ basicInline '*' Bold <?> "bold"
     , basicInline '/' Italic <?> "italic"
-    , basicInline '[' LinkStart <?> "link start"
-    , basicInline ']' LinkEnd <?> "link end"
-    , basicInline '|' LinkSep <?> "link separator"
     , textChar <?> "printable unicode char"]
 
 basicInline :: Char -> KBYToken -> Parser KBYWithInfo
@@ -72,6 +75,13 @@ basicInline tokChar tok = do
     startPos <- getSourcePos
     txt <- char tokChar
     return $ KBYWithInfo startPos (T.singleton txt) tok
+
+link :: Parser [KBYWithInfo]
+link = do
+    start <- basicInline '[' LinkStart
+    (title, linkSep) <- someTill_ richTextChar (basicInline '|' LinkSep)
+    (href, end) <- someTill_ textChar (basicInline ']' LinkEnd)
+    return $ [start] ++ title ++ [linkSep] ++ href ++ [end]
 
 textChar :: Parser KBYWithInfo
 textChar = do 
