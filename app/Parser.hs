@@ -29,8 +29,9 @@ type Parser = Parsec Void KT.KBYStream
 --inline tokens. for details on why we derive generic, see here:
 --https://hackage.haskell.org/package/hashable-1.4.2.0/docs/Data-Hashable.html#g:4
 data InlineID = PlainText
-                   | Bold
-                   | Italic deriving (Eq, Generic)
+              | Bold
+              | Italic 
+              | Link deriving (Eq, Generic)
 
 instance Hashable InlineID
 
@@ -122,7 +123,8 @@ plainText = KD.PlainText . T.concat <$> some textChar
 basicInlineChoices :: HM.HashMap InlineID (Parser KD.InlineElem)
 basicInlineChoices = HM.fromList [ (Bold, wrapsText (\x -> KD.Bold x) KT.Bold Bold)
                             , (Italic, wrapsText (\x -> KD.Italic x) KT.Italic Italic)
-                            , (PlainText, plainText) ]
+                            , (PlainText, plainText)
+                            , (Link, link) ]
 
 --simply choose an inline elem to parse from a given hashmap.
 basicInlineElem :: HM.HashMap InlineID (Parser KD.InlineElem) -> Parser KD.InlineElem
