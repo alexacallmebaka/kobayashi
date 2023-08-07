@@ -1,4 +1,4 @@
-cabal-version:      2.4
+cabal-version:      3.6
 name:               kobayashi
 version:            0.1.0.0
 
@@ -36,7 +36,8 @@ executable kobayashi
     -- LANGUAGE extensions used by modules in this package.
     other-extensions: TypeFamilies,
                       RecordWildCards,
-                      DeriveGeneric
+                      DeriveGeneric,
+                      OverloadedStrings
 
     build-depends:    base ^>=4.16.4.0,
                       megaparsec ^>=9.3.1,
