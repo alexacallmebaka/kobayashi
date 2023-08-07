@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 --parses a stream of tokens from the lexer to an internal document representation.
 
@@ -91,9 +92,18 @@ link = do
     basicToken KT.LinkStart
     title <- some $ inlineElem
     basicToken KT.LinkSep
-    src <- some plainText
+    src <- linkSource
     basicToken KT.LinkEnd
     return $ KD.Link title src
+
+linkSource :: Parser KD.LinkSource
+linkSource = do
+    (KD.PlainText url) <- plainText
+    let location =  if (T.isPrefixOf "./" url) then KD.Local else KD.Remote
+    let fileType = case (snd $ T.breakOnEnd "." url) of
+                      "kby" -> KD.KBY
+                      _ -> KD.Other
+    return $ KD.LinkSource location fileType url
 
 --parse a plaintext character
 textChar :: Parser T.Text

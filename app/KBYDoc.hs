@@ -2,15 +2,26 @@ module KBYDoc
     ( Document(..)
     , BlockElem(..)
     , InlineElem(..)
+    , ResourceLocation (..)
+    , ResourceType (..)
+    , LinkSource (..)
     ) where
 
 import qualified Data.Text as T
 import HTML
+import System.FilePath
 
 --types {{{1
 type Document = [BlockElem]
 
-type LinkSource = [InlineElem]
+data ResourceLocation = Local | Remote deriving (Eq, Show, Ord)
+
+data ResourceType = KBY | Other deriving (Eq, Show, Ord)
+
+data LinkSource = LinkSource { location :: ResourceLocation
+                             , resourceType :: ResourceType
+                             , url :: T.Text
+                             } deriving (Eq, Show, Ord)
 
 data BlockElem = Paragraph [InlineElem]
                 | Header [InlineElem]
@@ -32,5 +43,7 @@ instance HTML BlockElem where
 instance HTML InlineElem where
     htmlify (Bold inner) = wrap inner Strong
     htmlify (Italic inner) = wrap inner Em
-    htmlify (Link title src) = wrap title (A . concatMap htmlify $ src)
+    htmlify (Link title (LinkSource Local KBY url)) = wrap title (A src)
+      where src = (T.unpack url ) -<.> ".html"
+    htmlify (Link title (LinkSource _ _ url)) = wrap title (A $ T.unpack url)
     htmlify (PlainText inner) = T.unpack inner 
