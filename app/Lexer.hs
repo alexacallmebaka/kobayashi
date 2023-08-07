@@ -7,6 +7,7 @@ module Lexer (
 import KBYToken
 
 import qualified Data.Text as T
+import qualified Data.Set as Set
 import Data.Void
 
 import Control.Applicative hiding (some, many)
@@ -79,7 +80,10 @@ basicInline tokChar tok = do
 link :: Parser [KBYWithInfo]
 link = do
     start <- basicInline '[' LinkStart
-    (title, linkSep) <- someTill_ richTextChar (basicInline '|' LinkSep)
+    --fail if early link end char.
+    (title, linkSep) <- someTill_ ((char ']' >> (failure Nothing Set.empty)) <|> richTextChar) (basicInline '|' LinkSep)
+    --note: there is an edge case where if you type something like [text|] text text [reallink|realsrc], it will count it as
+    --one big link, but it is unlikely and thus will not be addressed at this time.
     (href, end) <- someTill_ textChar (basicInline ']' LinkEnd)
     return $ [start] ++ title ++ [linkSep] ++ href ++ [end]
 
