@@ -81,10 +81,8 @@ link :: Parser [KBYWithInfo]
 link = do
     start <- basicInline '[' LinkStart
     --fail if early link end char.
-    (title, linkSep) <- someTill_ ((char ']' >> (failure Nothing Set.empty)) <|> richTextChar) (basicInline '|' LinkSep)
-    --note: there is an edge case where if you type something like [text|] text text [reallink|realsrc], it will count it as
-    --one big link, but it is unlikely and thus will not be addressed at this time.
-    (href, end) <- someTill_ textChar (basicInline ']' LinkEnd)
+    (title, linkSep) <- manyTill_ ((char ']' >> (failure Nothing Set.empty)) <|> richTextChar) (basicInline '|' LinkSep)
+    (href, end) <- manyTill_ textChar (basicInline ']' LinkEnd)
     return $ [start] ++ title ++ [linkSep] ++ href ++ [end]
 
 textChar :: Parser KBYWithInfo
