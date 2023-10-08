@@ -18,13 +18,14 @@ data Scheme = HTTP | HTTPS deriving (Eq, Show, Ord)
 
 data ResourceType = KBY deriving (Eq, Show, Ord)
 
-data URL = RemoteRef { scheme :: Scheme, url :: T.Text } 
-         | LocalRef { rtype :: ResourceType, url :: T.Text }
+data URL = RemoteRef { scheme :: Scheme, refSrc :: T.Text } 
+         | LocalRef { rtype :: ResourceType, refSrc :: T.Text }
          deriving (Eq, Show, Ord)
 
 data BlockElem = Paragraph [InlineElem]
                | Header [InlineElem]
-               | Subheader [InlineElem] deriving (Eq, Show, Ord)
+               | Subheader [InlineElem] 
+               | Image URL deriving (Eq, Show, Ord)
 
 --inline elements that represent rich text can be arbitrarily nested.
 data InlineElem = Bold [InlineElem]
@@ -38,11 +39,12 @@ instance HTML BlockElem where
     htmlify (Header inner) = wrap inner H1
     htmlify (Subheader inner) = wrap inner H2
     htmlify (Paragraph inner) = wrap inner P
+    htmlify (Image url) = "<img src=\"" ++ (T.unpack $ refSrc url) ++ "\">"
 
 instance HTML InlineElem where
     htmlify (Bold inner) = wrap inner Strong
     htmlify (Italic inner) = wrap inner Em
     htmlify (Link title (LocalRef KBY url)) = wrap title (A src)
-      where src = (T.unpack url ) -<.> ".html"
+      where src = (T.unpack url) -<.> ".html"
     htmlify (Link title (RemoteRef _ url)) = wrap title (A $ T.unpack url)
     htmlify (PlainText inner) = T.unpack inner 

@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 --lex input file.
 module Lexer (
     tokenize
@@ -20,7 +22,7 @@ import Text.Megaparsec.Debug
 type Parser = Parsec Void T.Text
 
 file :: Parser KBYStream
-file = KBYStream . concat <$> some (choice [psuedoBlock, block])
+file = KBYStream . concat <$> (some (choice [psuedoBlock, block]) <* eof)
 
 -- block stuff {{{1
 -- right now our only true block is a paragraph.
@@ -31,30 +33,40 @@ block = do
 
 --elements that act as block elements but functionally take up one line.
 psuedoBlock :: Parser [KBYWithInfo]
-psuedoBlock = do
+psuedoBlock = choice [ psuedoBlockWithPrefix 
+                     , image ]
+
+psuedoBlockWithPrefix :: Parser [KBYWithInfo]
+psuedoBlockWithPrefix = do
     prefix <- psuedoBlockPrefix
     (contents, eob) <- someTill_ inline (try endOfBlock)
     return $ [prefix] ++ (concat contents) ++ [eob]
 
 psuedoBlockPrefix :: Parser KBYWithInfo
 psuedoBlockPrefix = choice
-    [ header <?> "header or subheader" ]
+    [ headerPrefix <?> "header or subheader"]
 
 --headers {{{2
-headerPrefix :: Parser ()
-headerPrefix = () <$ char '@'
 
-header :: Parser KBYWithInfo
-header = do
+headerPrefix :: Parser KBYWithInfo
+headerPrefix = do
     startPos <- getSourcePos
-    headerPrefix
-    tok <- option BeginHeader (BeginSubheader <$ headerPrefix)
-    let txt = T.pack $ case tok of
-                           BeginHeader -> "@"
-                           BeginSubheader -> "@@"
+    char '@'
+    tok <- option BeginHeader (BeginSubheader <$ char '@')
+    let txt = case tok of
+               BeginHeader -> "@"
+               BeginSubheader -> "@@"
     return $ KBYWithInfo startPos txt tok
     
 --2}}}
+
+image :: Parser [KBYWithInfo]
+image = do
+  beginPos <- getSourcePos
+  start <- basicInline '<' BeginImg
+  (content,end) <- manyTill_ textChar ( try (basicInline '>' EndImg) )
+  eob <- endOfBlock
+  return $ [start] ++ content ++ [end] ++ [eob]
 
 --1}}}
 
@@ -98,7 +110,7 @@ endOfBlock = do
     startPos <- getSourcePos
     eol
     (() <$ eol) <|> eof
-    let txt = T.pack "\\n\\n"
+    let txt = "\\n\\n"
     return $ KBYWithInfo startPos txt EndOfBlock
 
 

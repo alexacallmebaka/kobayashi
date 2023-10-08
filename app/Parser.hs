@@ -46,10 +46,19 @@ file = some blockElem <* eof
 blockElem :: Parser KD.BlockElem
 blockElem = choice [ oneTokenBlock KT.BeginHeader (\x -> KD.Header x)
                    , oneTokenBlock KT.BeginSubheader (\x -> KD.Subheader x)
-                   , paragraph ]
+                   , paragraph 
+                   , image ]
 
 paragraph :: Parser KD.BlockElem
 paragraph = KD.Paragraph <$> some inlineElem <* endOfBlock
+
+image :: Parser KD.BlockElem
+image = do
+  basicToken KT.BeginImg
+  src <- linkSource
+  basicToken KT.EndImg
+  endOfBlock
+  return $ KD.Image src
 
 --generic parser for blocks that begin with a single token and are ended by an
 --EndOfBlock token.
