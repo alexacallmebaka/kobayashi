@@ -14,8 +14,8 @@ import KBYDoc
 import KBYToken
 import Lexer
 import Parser
+import Error
 
-type BuildError = String
 type SourceName = String
 
 --htmlify internal Document.
@@ -27,13 +27,13 @@ toHTML doc = "<!DOCTYPE HTML>\n<html>\n<body>\n" ++  content ++ "</body>\n</html
 --lex a file and return a stream of tokens or an error as a string.
 lexFile :: SourceName -> T.Text -> Either BuildError KBYStream
 lexFile source input = case tokenize source input of
-        Left err -> Left $ errorBundlePretty err
+        Left err -> Left . LexError $ errorBundlePretty err
         Right tokens -> Right tokens
 
 --parse a file and return a stream of tokens or an error as a string.
 parseFile :: SourceName -> KBYStream -> Either BuildError Document
 parseFile source input = case parseTokens source input of
-        Left err -> Left $ errorBundlePretty err
+        Left err -> Left . ParseError $ errorBundlePretty err
         Right doc -> Right doc
 
 
