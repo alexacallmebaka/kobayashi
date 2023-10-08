@@ -10,7 +10,9 @@ import System.CPUTime (getCPUTime)
 import System.FilePath
 import System.Directory (createDirectoryIfMissing)
 import Text.Printf (printf)
+
 import Builder
+import Error
 --1}}}
 
 --define args which operate on input.
@@ -30,8 +32,11 @@ buildSite flags source = do
     printf "Building %s...\n" source
     case buildPage source (T.pack input) of
       Left err -> do
-          putStrLn "[ERROR] halting due to a build-time error:"
-          putStr err
+          let errType = case err of
+                          (LexError _) -> "lexical analysis"
+                          (ParseError _) -> "parse"
+          putStrLn $ "[ERROR] halting due to " ++ errType ++ " error:"
+          putStr $ unError err
       Right page -> do
         let outfile = dir </> (takeFileName source) -<.> ".html"
             in writeFile outfile page
