@@ -41,7 +41,7 @@ instance Hashable InlineID
 
 --parse a nonempty file.
 file :: Parser KD.Document
-file = some blockElem
+file = some blockElem <* eof
 
 blockElem :: Parser KD.BlockElem
 blockElem = choice [ oneTokenBlock KT.BeginHeader (\x -> KD.Header x)
@@ -97,14 +97,17 @@ link = do
     basicToken KT.LinkEnd
     return $ KD.Link title src
 
-linkSource :: Parser KD.LinkSource
+linkSource :: Parser KD.URL
 linkSource = do
     (KD.PlainText url) <- plainText
-    let location =  if (T.isPrefixOf "./" url) then KD.Local else KD.Remote
-    let fileType = case (snd $ T.breakOnEnd "." url) of
-                      "kby" -> KD.KBY
-                      _ -> KD.Other
-    return $ KD.LinkSource location fileType url
+    case ( T.isPrefixOf "./" url ) of
+      True -> case (snd $ T.breakOnEnd "." url) of
+                "kby" -> return $ KD.LocalRef KD.KBY url
+                _ -> failure Nothing Set.empty
+      False -> case (fst $ T.breakOn "://" url) of
+                "http" -> return $ KD.RemoteRef KD.HTTP url
+                "https" -> return $ KD.RemoteRef KD.HTTPS url
+                _ -> failure Nothing Set.empty
 
 --parse a plaintext character
 textChar :: Parser T.Text
