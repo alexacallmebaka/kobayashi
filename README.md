@@ -80,7 +80,7 @@ Here is my current list of to-dos before the first release:
 * Comments.
 * Math.
 * BNF grammar for kby spec.
-* Templates
+* Templates (w/ params too)
 * Check if files/images linked to exist.
 * Test suite
 
