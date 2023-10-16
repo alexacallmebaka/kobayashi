@@ -20,7 +20,7 @@ type SourceName = String
 
 --htmlify internal Document.
 toHTML :: Document -> String --{{{1
-toHTML doc = "<!DOCTYPE HTML>\n<html>\n<body>\n" ++  content ++ "</body>\n</html>\n"
+toHTML doc = "<!DOCTYPE HTML>\n<!--Made with <3 by Kobayashi: https://github.com/alexacallmebaka/kobayashi-->\n<html>\n<body>\n" ++  content ++ "</body>\n</html>\n"
     where content = concatMap ((++ "\n") . htmlify) doc
 --1}}}
 
