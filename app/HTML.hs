@@ -43,8 +43,9 @@ instance Show Tag where
     show (A _) = "a"
 --1}}}
 
+--tags that take up thier own line.
 standaloneTags :: HS.HashSet Tag
-standaloneTags = HS.fromList [P, UL]
+standaloneTags = HS.fromList [P, UL, LI]
 
 isStandalone :: Tag -> Bool
 isStandalone x = HS.member x standaloneTags
@@ -58,9 +59,10 @@ htmlFold = foldl (\acc x -> acc ++ htmlify x) ""
 
 --generate start and end tag strings from a tag.
 genTags :: Tag -> (String, String)
+genTags UL  = ("<ul>\n", "</ul>")
+genTags LI  = ("<li>\n", "\n</li>\n")
 genTags (A src) = (start, "</a>")
                 where start = "<a href=\"" ++ src ++ "\">"
-
 genTags x = ("<" ++ tag ++ ">" ++ nline, nline ++ "</" ++ tag ++ ">")
             where tag = show x
                   --certain tags should be formatted on their own line.
