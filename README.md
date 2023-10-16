@@ -1,22 +1,27 @@
 # What is Kobayashi?
 
-Kobayashi is a tool for generating static websites! She takes `.kby` files and transforms them into `HTML`.
+Kobayashi is a tool for generating static websites! It takes `.kby` files and transforms them into `HTML`.
 
 # What is a .kby file?
 
 A `.kby` file is a custom markup file format designed to design websites with Kobayashi. The spec is as follows:
-* @text --> header containing "text"
-* @@text --> subheader containing "text"
-* \*text\* --> bold text
-* /text/ --> italic text
+* `@text` --> header containing "text"
+* `@@text` --> subheader containing "text"
+* `*text*` --> bold text
+* `/text/` --> italic text
+* `[text|url]` --> hyperlink "text" that redirects to `url`
+* `<./path/to/image.jpeg>` --> image
 
-Feel free to nest bold and italic text, as well as include them in other elements which have text content (e.g. headers).
+Feel free to nest bold and italic text, as well as include them in other elements which have text content (e.g. headers, links).
 
 Paragraphs are made up of lines of text. The "@" character
 can appear in paragraphs no problem, but "\*", "/" and "\\" will need to be escaped by prefixing them with a "\\".
 
-To end a header, subheader, or paragraph use two newlines. Single newlines will be
+To end a header, subheader, image, or paragraph use two newlines. Single newlines will be
 treated as spaces.
+
+For images, you can specify a path to a local image relative to the directory (i.e. starting with `./` that the html page will live in.
+Remote images can be specified using a url. The current file types that Kobayashi can handle are: `JPEG` (or `JPG`) and `PNG`.
 
 ### Example
 Here is a simple example of a `.kby` file.
@@ -63,8 +68,6 @@ cabal run -- kobayashi help
 Here is my current list of to-dos before the first release:
 
 * Batch builds.
-* Images.
-* Links.
 * Code blocks/verbatim.
 * Underline.
 * Strikethrough.
@@ -76,10 +79,9 @@ Here is my current list of to-dos before the first release:
 * Pretty `HTML` formatting.
 * Comments.
 * Math.
-* CFG for kby spec.
+* BNF grammar for kby spec.
 * templates
 
 Some other ideas for after a stable release:
-* Integration with docker (i.e. auto-builds).
 * Look into RSS feeds for site.
-* WYSIWYG editor that she can also build from. 
+* WYSIWYG editor that kobayashi can also build from. 
