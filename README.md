@@ -42,14 +42,14 @@ Kobayashi is still in the early stages of development, and is unstable. If you w
 source code using [Cabal](https://www.haskell.org/cabal/).
 
 ```
-cabal build
+cabal install
 ```
 
 
 You can then build individual `.kby` files with. 
 
 ```
-cabal run -- kobayashi build /path/to/file.kby
+kobayashi build /path/to/file.kby
 ```
 
 The `HTML` file will be output in the directory where the command was run. The file will will have the same name 
