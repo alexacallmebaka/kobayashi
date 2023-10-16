@@ -110,8 +110,11 @@ linkSource :: Parser KD.URL
 linkSource = do
     (KD.PlainText url) <- plainText
     case ( T.isPrefixOf "./" url ) of
-      True -> case (snd $ T.breakOnEnd "." url) of
+      True -> case ( T.toLower . snd $ T.breakOnEnd "." url) of
                 "kby" -> return $ KD.LocalRef KD.KBY url
+                "jpeg" -> return $ KD.LocalRef KD.JPEG url
+                "jpg" -> return $ KD.LocalRef KD.JPEG url
+                "png" -> return $ KD.LocalRef KD.PNG url
                 _ -> failure Nothing Set.empty
       False -> case (fst $ T.breakOn "://" url) of
                 "http" -> return $ KD.RemoteRef KD.HTTP url
