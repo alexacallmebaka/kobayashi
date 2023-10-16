@@ -80,8 +80,9 @@ Here is my current list of to-dos before the first release:
 * Comments.
 * Math.
 * BNF grammar for kby spec.
-* templates
+* Templates
 * Check if files/images linked to exist.
+* Test suite
 
 Some other ideas for after a stable release:
 * Look into RSS feeds for site.
