@@ -16,7 +16,7 @@ type Document = [BlockElem]
 
 data Scheme = HTTP | HTTPS deriving (Eq, Show, Ord)
 
-data ResourceType = KBY deriving (Eq, Show, Ord)
+data ResourceType = KBY | JPEG | PNG deriving (Eq, Show, Ord)
 
 data URL = RemoteRef { scheme :: Scheme, refSrc :: T.Text } 
          | LocalRef { rtype :: ResourceType, refSrc :: T.Text }
