@@ -22,14 +22,40 @@ import Text.Megaparsec.Debug
 type Parser = Parsec Void T.Text
 
 file :: Parser KBYStream
+-- <* eof to ensure we fail if we havent reached the end of the file yet.
+-- you cant consume eof, so as long as we are at the end this parser will succeed.
 file = KBYStream . concat <$> (some (choice [psuedoBlock, block]) <* eof)
 
 -- block stuff {{{1
--- right now our only true block is a paragraph.
+
 block :: Parser [KBYWithInfo]
-block = do 
+block = choice [ unorderedList
+               , paragraph ]
+
+paragraph :: Parser [KBYWithInfo]
+paragraph = do 
     (contents, eob) <- someTill_ inline (try endOfBlock)
     return $ (concat contents) ++ [eob]
+
+unorderedList :: Parser [KBYWithInfo]
+unorderedList = do
+    (contents, eob) <- someTill_ unorderedListItem (try unorderedListEnd)
+    return $ (concat contents) ++ [eob]
+
+unorderedListItem :: Parser [KBYWithInfo]
+unorderedListItem =  do
+  bullet <- basicInline '-' UnorderedListItem
+  space
+  contents <- someTill inline (try eol)
+  return $ [bullet] ++ (concat contents)
+
+--cannot use the standard endOfBlock parser here since the unorderedListItem "eats" the first newline.
+unorderedListEnd :: Parser KBYWithInfo
+unorderedListEnd = do
+    startPos <- getSourcePos
+    (() <$ eol) <|> eof
+    let txt = "\\n\\n"
+    return $ KBYWithInfo startPos txt EndOfBlock
 
 --elements that act as block elements but functionally take up one line.
 psuedoBlock :: Parser [KBYWithInfo]
@@ -62,7 +88,6 @@ headerPrefix = do
 
 image :: Parser [KBYWithInfo]
 image = do
-  beginPos <- getSourcePos
   start <- basicInline '<' BeginImg
   (content,end) <- manyTill_ textChar ( try (basicInline '>' EndImg) )
   eob <- endOfBlock
