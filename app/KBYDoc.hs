@@ -5,6 +5,7 @@ module KBYDoc
     , Scheme (..)
     , ResourceType (..)
     , URL (..)
+    , UnorderedListItem (..)
     ) where
 
 import qualified Data.Text as T
@@ -22,9 +23,12 @@ data URL = RemoteRef { scheme :: Scheme, refSrc :: T.Text }
          | LocalRef { rtype :: ResourceType, refSrc :: T.Text }
          deriving (Eq, Show, Ord)
 
+data UnorderedListItem = UnorderedListItem [InlineElem] deriving (Eq, Show, Ord)
+
 data BlockElem = Paragraph [InlineElem]
                | Header [InlineElem]
                | Subheader [InlineElem] 
+               | UnorderedList [UnorderedListItem]
                | Image URL deriving (Eq, Show, Ord)
 
 --inline elements that represent rich text can be arbitrarily nested.
@@ -39,6 +43,7 @@ instance HTML BlockElem where
     htmlify (Header inner) = wrap inner H1
     htmlify (Subheader inner) = wrap inner H2
     htmlify (Paragraph inner) = wrap inner P
+    htmlify (UnorderedList inner) = wrap inner UL
     htmlify (Image url) = "<img src=\"" ++ (T.unpack $ refSrc url) ++ "\">"
 
 instance HTML InlineElem where
@@ -48,3 +53,6 @@ instance HTML InlineElem where
       where src = (T.unpack url) -<.> ".html"
     htmlify (Link title (RemoteRef _ url)) = wrap title (A $ T.unpack url)
     htmlify (PlainText inner) = T.unpack inner 
+
+instance HTML UnorderedListItem where
+  htmlify (UnorderedListItem inner)  = wrap inner LI

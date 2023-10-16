@@ -46,6 +46,7 @@ file = some blockElem <* eof
 blockElem :: Parser KD.BlockElem
 blockElem = choice [ oneTokenBlock KT.BeginHeader (\x -> KD.Header x)
                    , oneTokenBlock KT.BeginSubheader (\x -> KD.Subheader x)
+                   , unorderedList
                    , paragraph 
                    , image ]
 
@@ -59,6 +60,15 @@ image = do
   basicToken KT.EndImg
   endOfBlock
   return $ KD.Image src
+
+unorderedList :: Parser KD.BlockElem
+unorderedList = KD.UnorderedList <$> (some unorderedListItem <* endOfBlock)
+
+unorderedListItem :: Parser KD.UnorderedListItem
+unorderedListItem = do
+  basicToken KT.UnorderedListItem
+  contents <- many inlineElem
+  return $ KD.UnorderedListItem contents
 
 --generic parser for blocks that begin with a single token and are ended by an
 --EndOfBlock token.

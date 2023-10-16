@@ -25,6 +25,8 @@ data Tag = Strong
          | Em
          | H1
          | H2
+         | UL
+         | LI
          | A LinkSource
          | P deriving (Generic, Eq)
 
@@ -35,12 +37,14 @@ instance Show Tag where
     show Em = "em"
     show H1 = "h1"
     show H2 = "h2"
+    show UL = "ul"
+    show LI = "li"
     show P = "p"
     show (A _) = "a"
 --1}}}
 
 standaloneTags :: HS.HashSet Tag
-standaloneTags = HS.fromList [P]
+standaloneTags = HS.fromList [P, UL]
 
 isStandalone :: Tag -> Bool
 isStandalone x = HS.member x standaloneTags

@@ -21,6 +21,7 @@ import Text.Megaparsec.Stream
 --types {{{1
 data KBYToken = BeginHeader
               | BeginSubheader
+              | UnorderedListItem
               | BeginImg
               | EndImg
               | Bold 
