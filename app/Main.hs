@@ -33,9 +33,9 @@ buildSite flags source = do
     case buildPage source (T.pack input) of
       Left err -> do
           let errType = case err of
-                          (LexError _) -> "lexical analysis"
-                          (ParseError _) -> "parse"
-          putStrLn $ "[ERROR] halting due to " ++ errType ++ " error:"
+                          (LexError _) -> "lexical"
+                          (ParseError _) -> "syntactic"
+          printf "[ERROR] halting build of %s due to %s error:\n" source errType
           putStr $ unError err
       Right page -> do
         let outfile = dir </> (takeFileName source) -<.> ".html"
