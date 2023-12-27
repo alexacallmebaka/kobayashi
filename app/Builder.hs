@@ -1,6 +1,6 @@
 --build website from DocuElem.
 module Builder
-    ( buildPage
+    ( kbyToHtml
     ) where
 
 import qualified Data.Text as T
@@ -38,8 +38,8 @@ parseFile source input = case parseTokens source input of
 
 
 -- kby => html.
-buildPage :: SourceName -> T.Text -> Either BuildError String --{{{1
-buildPage source input = 
+kbyToHtml :: SourceName -> T.Text -> Either BuildError String --{{{1
+kbyToHtml source input = 
     case (lexFile source input) >>= (parseFile source) of
         Right doc -> Right $ toHTML doc
         Left x -> Left x

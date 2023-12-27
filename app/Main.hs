@@ -2,13 +2,16 @@ module Main where
 
 -- imports {{{1
 import qualified Data.Map as Map
+import qualified System.Directory.OsPath as OsPath
+import qualified System.OsPath as Os
+import qualified Data.Text as T (pack)
+
 import Data.List (intercalate)
-import Data.Text as T (pack)
 import System.IO
 import System.Environment (getArgs)
 import System.CPUTime (getCPUTime)
 import System.FilePath
-import System.Directory (createDirectoryIfMissing)
+import System.Directory
 import Text.Printf (printf)
 
 import Builder
@@ -20,36 +23,73 @@ dispatch :: Map.Map String (Map.Map String String -> String -> IO ()) --{{{1
 dispatch = Map.fromList [("build", buildSite)]
 --1}}}
 
+getKbyFiles :: Os.OsPath -> IO [Os.OsPath]
+getKbyFiles dir = do
+  ext <- Os.encodeUtf ".kby"
+  OsPath.listDirectory dir >>= \y -> return $ filter (\x -> ( Os.takeExtension x ) == ext ) y
+
+
+buildPage' :: FilePath -> Os.OsPath -> IO ()
+buildPage' outdir source = do
+                 sourceString <- Os.decodeUtf source
+                 input <- readFile sourceString
+                 printf "Building %s...\n" sourceString
+                 case kbyToHtml sourceString (T.pack input) of
+                   Left err -> do
+                           let errType = case err of
+                                           (LexError _) -> "lexical"
+                                           (ParseError _) -> "syntactic"
+                           printf "[ERROR] halting build of %s due to %s error:\n" sourceString errType
+                           putStr $ unError err
+                   Right page -> do
+                     ext <- Os.encodeUtf ".html"
+                     outfile <- Os.decodeUtf $ Os.replaceExtension source ext
+                     let outpath = ".." </> outdir </> outfile
+                       in writeFile outpath page
+
+
+
 --actions {{{1
-buildSite :: Map.Map String String -> String -> IO () --{{{1
-buildSite flags source = do
-    input <- readFile source
-    let dir = case Map.lookup "-odir" flags of
+buildPage :: FilePath -> FilePath -> IO () --{{{2
+buildPage source outdir = do
+                 input <- readFile source
+                 printf "Building %s...\n" source
+                 case kbyToHtml source (T.pack input) of
+                   Left err -> do
+                           let errType = case err of
+                                           (LexError _) -> "lexical"
+                                           (ParseError _) -> "syntactic"
+                           printf "[ERROR] halting build of %s due to %s error:\n" source errType
+                           putStr $ unError err
+                   Right page -> do
+                     let outfile = outdir </> (takeFileName source) -<.> ".html"
+                       in writeFile outfile page
+--2}}}
+
+--takes directory
+--run on root dir, recurse on all child dirs
+--add on the new dirs ill need to make in build into odir path
+buildSite :: Map.Map String String -> String -> IO () --{{{2
+buildSite flags sourceString = do
+    let odir = case Map.lookup "-odir" flags of
                 Just custom -> custom
                 Nothing -> "."
-    createDirectoryIfMissing True dir
+    createDirectoryIfMissing True odir
+    --throw error if not directory somewhere in here
     start <- getCPUTime
-    printf "Building %s...\n" source
-    case buildPage source (T.pack input) of
-      Left err -> do
-          let errType = case err of
-                          (LexError _) -> "lexical"
-                          (ParseError _) -> "syntactic"
-          printf "[ERROR] halting build of %s due to %s error:\n" source errType
-          putStr $ unError err
-      Right page -> do
-        let outfile = dir </> (takeFileName source) -<.> ".html"
-            in writeFile outfile page
-        end <- getCPUTime
-        let time = fromIntegral (end-start) / (10^12)
-            in printf "Finished in %0.4f sec.\n" (time :: Double)
---1}}}
+    source <- Os.encodeUtf sourceString
+    files <- getKbyFiles source
+    OsPath.withCurrentDirectory source $ mapM_ ( buildPage' odir ) files
+    end <- getCPUTime
+    let time = fromIntegral (end-start) / (10^12)
+      in printf "Finished in %0.4f sec.\n" (time :: Double)
+--2}}}
 
-options :: [String] --{{{1
+options :: [String] --{{{2
 options = ["-odir"]
---1}}}
+--2}}}
 
-help :: IO () --{{{1
+help :: IO () --{{{2
 help = mapM_ putStrLn [ "Usage: kobayashi [options] <command> \n"
     ,"options"
     , "============"
@@ -58,6 +98,7 @@ help = mapM_ putStrLn [ "Usage: kobayashi [options] <command> \n"
     , "============"
     , "build /path/to/source.kby:\t build .kby file to html."
     ]
+--2}}}
 --1}}}
 
 --arg handlers. {{{1
