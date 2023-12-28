@@ -13,6 +13,7 @@ import System.CPUTime (getCPUTime)
 import System.FilePath
 import System.Directory
 import Text.Printf (printf)
+import Control.Monad
 
 import Builder
 import Error
@@ -20,7 +21,7 @@ import Error
 
 --define args which operate on input.
 dispatch :: Map.Map String (Map.Map String String -> String -> IO ()) --{{{1
-dispatch = Map.fromList [("build", buildSite)]
+dispatch = Map.fromList [("build", build)]
 --1}}}
 
 getKbyFiles :: Os.OsPath -> IO [Os.OsPath]
@@ -28,62 +29,72 @@ getKbyFiles dir = do
   ext <- Os.encodeUtf ".kby"
   OsPath.listDirectory dir >>= \y -> return $ filter (\x -> ( Os.takeExtension x ) == ext ) y
 
+getChildren :: Os.OsPath -> IO [Os.OsPath]
+getChildren dir = OsPath.listDirectory dir >>= filterM ( \x -> OsPath.doesDirectoryExist $ Os.combine dir x ) 
 
-buildPage' :: FilePath -> Os.OsPath -> IO ()
-buildPage' outdir source = do
+
+--build {{{1
+
+--need to handle other files like images...
+--maybe static asset dir... gonna need to make other link type just "asset link"... them i can also 
+--garuntee that the thing exists which could be cool
+
+--takes directory
+build :: Map.Map String String -> String -> IO () --{{{2
+build flags sourceString = do
+    odir <- case Map.lookup "-odir" flags of
+               Just custom -> Os.encodeUtf custom >>= OsPath.makeAbsolute
+               Nothing -> OsPath.getCurrentDirectory
+    source <- Os.encodeUtf sourceString
+    --dot <- Os.encodeUtf "."
+    start <- getCPUTime
+    --OsPath.withCurrentDirectory source $ buildSite odir dot
+    children <- getChildren source
+    files <- getKbyFiles source
+    OsPath.withCurrentDirectory source $ mapM_ ( buildSite odir ) ( files ++ children )
+    end <- getCPUTime
+    let time = fromIntegral (end-start) / (10^12)
+      in printf "Finished in %0.4f sec.\n" (time :: Double)
+--2}}}
+
+buildSite :: Os.OsPath -> Os.OsPath -> IO () --{{{2
+buildSite odir source = do
+  OsPath.createDirectoryIfMissing True odir
+  isFile <- OsPath.doesFileExist source
+  case isFile of
+    True -> buildPage odir source
+    False -> do
+      isDir <- OsPath.doesDirectoryExist source
+      case isDir of
+        False -> printf "[ERROR] %s is not a Kby file or directory." (show source)
+        True -> do
+          children <- getChildren source
+          files <- getKbyFiles source
+          OsPath.withCurrentDirectory source $ mapM_ ( buildSite ( Os.combine odir source ) ) ( files ++ children )
+--2}}}
+
+buildPage :: Os.OsPath -> Os.OsPath -> IO () --{{{2
+buildPage outdir source = do
                  sourceString <- Os.decodeUtf source
+                 outdirString <- Os.decodeUtf outdir
+                 ext <- Os.encodeUtf ".html"
+                 outfile <- Os.decodeUtf $ Os.replaceExtension source ext
+                 let outpath = outdirString </> outfile
                  input <- readFile sourceString
-                 printf "Building %s...\n" sourceString
+                 printf "Building %s...\n" outpath
                  case kbyToHtml sourceString (T.pack input) of
                    Left err -> do
                            let errType = case err of
                                            (LexError _) -> "lexical"
                                            (ParseError _) -> "syntactic"
-                           printf "[ERROR] halting build of %s due to %s error:\n" sourceString errType
+                           printf "[ERROR] halting build of %s due to %s error:\n" outpath errType
                            putStr $ unError err
-                   Right page -> do
-                     ext <- Os.encodeUtf ".html"
-                     outfile <- Os.decodeUtf $ Os.replaceExtension source ext
-                     let outpath = ".." </> outdir </> outfile
-                       in writeFile outpath page
+                   Right page -> writeFile outpath page
+--2}}}
 
-
+--1}}}
 
 --actions {{{1
-buildPage :: FilePath -> FilePath -> IO () --{{{2
-buildPage source outdir = do
-                 input <- readFile source
-                 printf "Building %s...\n" source
-                 case kbyToHtml source (T.pack input) of
-                   Left err -> do
-                           let errType = case err of
-                                           (LexError _) -> "lexical"
-                                           (ParseError _) -> "syntactic"
-                           printf "[ERROR] halting build of %s due to %s error:\n" source errType
-                           putStr $ unError err
-                   Right page -> do
-                     let outfile = outdir </> (takeFileName source) -<.> ".html"
-                       in writeFile outfile page
---2}}}
-
---takes directory
---run on root dir, recurse on all child dirs
---add on the new dirs ill need to make in build into odir path
-buildSite :: Map.Map String String -> String -> IO () --{{{2
-buildSite flags sourceString = do
-    let odir = case Map.lookup "-odir" flags of
-                Just custom -> custom
-                Nothing -> "."
-    createDirectoryIfMissing True odir
-    --throw error if not directory somewhere in here
-    start <- getCPUTime
-    source <- Os.encodeUtf sourceString
-    files <- getKbyFiles source
-    OsPath.withCurrentDirectory source $ mapM_ ( buildPage' odir ) files
-    end <- getCPUTime
-    let time = fromIntegral (end-start) / (10^12)
-      in printf "Finished in %0.4f sec.\n" (time :: Double)
---2}}}
 
 options :: [String] --{{{2
 options = ["-odir"]
@@ -99,6 +110,7 @@ help = mapM_ putStrLn [ "Usage: kobayashi [options] <command> \n"
     , "build /path/to/source.kby:\t build .kby file to html."
     ]
 --2}}}
+
 --1}}}
 
 --arg handlers. {{{1
