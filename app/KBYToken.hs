@@ -29,6 +29,8 @@ data KBYToken = BeginHeader
               | LinkStart
               | LinkEnd
               | LinkSep
+              | PageRef
+              | AssetRef
               | EndOfBlock 
               | TextChar deriving (Eq, Show, Ord)
 

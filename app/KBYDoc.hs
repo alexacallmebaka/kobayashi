@@ -2,25 +2,38 @@ module KBYDoc
     ( Document(..)
     , BlockElem(..)
     , InlineElem(..)
-    , Scheme (..)
-    , ResourceType (..)
     , URL (..)
     , UnorderedListItem (..)
     ) where
 
 import qualified Data.Text as T
+
 import HTML
-import System.FilePath
 
 --types {{{1
 type Document = [BlockElem]
 
-data Scheme = HTTP | HTTPS deriving (Eq, Show, Ord)
+--want to add an "Other" fallback type that just raw links to file that we use with normal links
 
-data ResourceType = KBY | JPEG | PNG deriving (Eq, Show, Ord)
+--would like to be able to check if local URL points to an image... isImg function??
+--also would like to store type of thing that a link is pointing to for image purposes... if no extension can just be "other"
+--doing the above is really hard by parsing the link... 
+--(eg this is an image https://static.wikia.nocookie.net/p__/images/c/ca/Kuroneko_ruri_gokou.png/revision/latest?cb=20120928143400&path-prefix=protagonist) 
+--in theory i just need ".png" to show up somewhere optionally followed by a /, but more research is required. would it be
+--possible to have an image url with no indication of it being an image? maybe something wacky like from a cdn? the real question
+--is at that point do you even allow that? because file extensions are technically optional too...
+--maybe i could do an http request and check the mimetype???????
+--there also may be some advantage to cloneing the image and keeping it locally...
+--looks like ill be needing a semantic analysis pass... maybe just do this in the build pass when im building out links... maybe or maybe parse.
+--whereever i do it it needs access to to the map with the asset location
 
-data URL = RemoteRef { scheme :: Scheme, refSrc :: T.Text } 
-         | LocalRef { rtype :: ResourceType, refSrc :: T.Text }
+--replace ./ with root dir (maybe switch to %/??), 
+--replace $/ with asset dir
+-- ~ as shorcut for current dir?
+
+data URL = RemoteRef { refSrc :: T.Text } 
+         | PageRef { refSrc :: T.Text }
+         | AssetRef { refSrc :: T.Text }
          deriving (Eq, Show, Ord)
 
 data UnorderedListItem = UnorderedListItem [InlineElem] deriving (Eq, Show, Ord)
@@ -49,9 +62,9 @@ instance HTML BlockElem where
 instance HTML InlineElem where
     htmlify (Bold inner) = wrap inner Strong
     htmlify (Italic inner) = wrap inner Em
-    htmlify (Link title (LocalRef KBY url)) = wrap title (A src)
-      where src = (T.unpack url) -<.> ".html"
-    htmlify (Link title (RemoteRef _ url)) = wrap title (A $ T.unpack url)
+    htmlify (Link title (PageRef url)) = wrap title (A $ T.unpack url)
+    htmlify (Link title (AssetRef url)) = wrap title (A $ T.unpack url)
+    htmlify (Link title (RemoteRef url)) = wrap title (A $ T.unpack url)
     htmlify (PlainText inner) = T.unpack inner 
 
 instance HTML UnorderedListItem where

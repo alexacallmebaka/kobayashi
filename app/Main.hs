@@ -24,20 +24,26 @@ dispatch :: Map.Map String (Map.Map String String -> String -> IO ()) --{{{1
 dispatch = Map.fromList [("build", build)]
 --1}}}
 
-getKbyFiles :: Os.OsPath -> IO [Os.OsPath]
-getKbyFiles dir = do
-  ext <- Os.encodeUtf ".kby"
-  OsPath.listDirectory dir >>= \y -> return $ filter (\x -> ( Os.takeExtension x ) == ext ) y
-
-getChildren :: Os.OsPath -> IO [Os.OsPath]
-getChildren dir = OsPath.listDirectory dir >>= filterM ( \x -> OsPath.doesDirectoryExist $ Os.combine dir x ) 
-
-
 --build {{{1
 
 --need to handle other files like images...
 --maybe static asset dir... gonna need to make other link type just "asset link"... them i can also 
 --garuntee that the thing exists which could be cool
+--make this folder path user configurable... will make need to pass a map to the builder (i.e. htmlify) with this info
+
+--unrelated... but i should also make garuntees about file stypes for images. (i.e. is png or jpg)
+
+--skip asset dir
+getChildren :: Os.OsPath -> IO [Os.OsPath] --{{{2
+getChildren dir = OsPath.listDirectory dir >>= filterM ( \x -> OsPath.doesDirectoryExist $ Os.combine dir x ) 
+--2}}}
+
+--TODO: make case insensitive, 
+getKbyFiles :: Os.OsPath -> IO [Os.OsPath] --{{{2
+getKbyFiles dir = do
+  ext <- Os.encodeUtf ".kby"
+  OsPath.listDirectory dir >>= \y -> return $ filter (\x -> ( Os.takeExtension x ) == ext ) y
+--2}}}
 
 --takes directory
 build :: Map.Map String String -> String -> IO () --{{{2
@@ -46,12 +52,23 @@ build flags sourceString = do
                Just custom -> Os.encodeUtf custom >>= OsPath.makeAbsolute
                Nothing -> OsPath.getCurrentDirectory
     source <- Os.encodeUtf sourceString
-    --dot <- Os.encodeUtf "."
     start <- getCPUTime
-    --OsPath.withCurrentDirectory source $ buildSite odir dot
+    rootIndex <- Os.encodeUtf "index.html"
+    --error handling for if index doesnt exist
+    outpath <- Os.decodeUtf odir >>= \x -> return $ x </> "index.html"
+    input <- readFile $ sourceString </> "index.kby"
+    printf "Building %s...\n" (dropFileName outpath)
+    case kbyToHtml sourceString (T.pack input) of
+      Left err -> do
+        let errType = case err of
+                       (LexError _) -> "lexical"
+                       (ParseError _) -> "syntactic"
+        printf "[ERROR] halting build of %s due to %s error:\n" (dropFileName outpath) errType
+        putStr $ unError err
+      Right page -> writeFile outpath page
     children <- getChildren source
     files <- getKbyFiles source
-    OsPath.withCurrentDirectory source $ mapM_ ( buildSite odir ) ( files ++ children )
+    OsPath.withCurrentDirectory source $ mapM_ ( buildSite odir ) ( filter ( /= rootIndex ) ( files ++ children ) )
     end <- getCPUTime
     let time = fromIntegral (end-start) / (10^12)
       in printf "Finished in %0.4f sec.\n" (time :: Double)
@@ -76,18 +93,17 @@ buildSite odir source = do
 buildPage :: Os.OsPath -> Os.OsPath -> IO () --{{{2
 buildPage outdir source = do
                  sourceString <- Os.decodeUtf source
-                 outdirString <- Os.decodeUtf outdir
-                 ext <- Os.encodeUtf ".html"
-                 outfile <- Os.decodeUtf $ Os.replaceExtension source ext
-                 let outpath = outdirString </> outfile
+                 outdirString <- Os.decodeUtf outdir >>= \x -> return $ x </> (dropExtension sourceString)
+                 createDirectoryIfMissing True outdirString
+                 let outpath = outdirString </> "index.html"
                  input <- readFile sourceString
-                 printf "Building %s...\n" outpath
+                 printf "Building %s...\n" (dropFileName outpath)
                  case kbyToHtml sourceString (T.pack input) of
                    Left err -> do
                            let errType = case err of
                                            (LexError _) -> "lexical"
                                            (ParseError _) -> "syntactic"
-                           printf "[ERROR] halting build of %s due to %s error:\n" outpath errType
+                           printf "[ERROR] halting build of %s due to %s error:\n" (dropFileName outpath) errType
                            putStr $ unError err
                    Right page -> writeFile outpath page
 --2}}}

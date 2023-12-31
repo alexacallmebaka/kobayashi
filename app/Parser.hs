@@ -53,6 +53,7 @@ blockElem = choice [ oneTokenBlock KT.BeginHeader (\x -> KD.Header x)
 paragraph :: Parser KD.BlockElem
 paragraph = KD.Paragraph <$> some inlineElem <* endOfBlock
 
+--TODO: check that is a valid image type!
 image :: Parser KD.BlockElem
 image = do
   basicToken KT.BeginImg
@@ -116,20 +117,16 @@ link = do
     basicToken KT.LinkEnd
     return $ KD.Link title src
 
-linkSource :: Parser KD.URL
+--need to give better parse errors here
+linkSource :: Parser (KD.URL)
 linkSource = do
+    maybeRefType <- optional (basicToken KT.PageRef <|> basicToken KT.AssetRef)
     (KD.PlainText url) <- plainText
-    case ( T.isPrefixOf "./" url ) of
-      True -> case ( T.toLower . snd $ T.breakOnEnd "." url) of
-                "kby" -> return $ KD.LocalRef KD.KBY url
-                "jpeg" -> return $ KD.LocalRef KD.JPEG url
-                "jpg" -> return $ KD.LocalRef KD.JPEG url
-                "png" -> return $ KD.LocalRef KD.PNG url
-                _ -> failure Nothing Set.empty
-      False -> case (fst $ T.breakOn "://" url) of
-                "http" -> return $ KD.RemoteRef KD.HTTP url
-                "https" -> return $ KD.RemoteRef KD.HTTPS url
-                _ -> failure Nothing Set.empty
+    case maybeRefType of
+      Nothing -> return $ KD.RemoteRef url
+      Just (refType) -> case refType of
+        KT.AssetRef -> return $ KD.AssetRef url
+        KT.PageRef -> return $ KD.PageRef url
 
 --parse a plaintext character
 textChar :: Parser T.Text

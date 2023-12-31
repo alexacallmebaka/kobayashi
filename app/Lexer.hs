@@ -114,13 +114,19 @@ basicInline tokChar tok = do
     txt <- char tokChar
     return $ KBYWithInfo startPos (T.singleton txt) tok
 
+pageOrAssetRef :: Parser KBYWithInfo
+pageOrAssetRef = basicInline '%' PageRef <|> basicInline '$' AssetRef
+
 link :: Parser [KBYWithInfo]
 link = do
     start <- basicInline '[' LinkStart
     --fail if early link end char.
     (title, linkSep) <- manyTill_ ((char ']' >> (failure Nothing Set.empty)) <|> richTextChar) (basicInline '|' LinkSep)
+    maybeRefType <- optional pageOrAssetRef
     (href, end) <- manyTill_ textChar (basicInline ']' LinkEnd)
-    return $ [start] ++ title ++ [linkSep] ++ href ++ [end]
+    case maybeRefType of
+      (Just refType) -> return $ [start] ++ title ++ [linkSep] ++ [refType] ++ href ++ [end]
+      Nothing -> return $ [start] ++ title ++ [linkSep] ++ href ++ [end]
 
 textChar :: Parser KBYWithInfo
 textChar = do 
