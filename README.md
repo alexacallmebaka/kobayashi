@@ -79,7 +79,6 @@ Here is my current list of to-dos before the first release:
 
 Definite includes:
 * Code blocks/verbatim.
-* CSS support.
 * Config file
 * Better docs (GitHub wiki?? Page on my site??).
 
@@ -92,6 +91,7 @@ Nice to have:
 * BNF grammar for kby spec.
 * Templates (w/ params too)
 * Check if files/images linked to exist.
+* clean command
 
 Some other ideas for after a stable release:
 * Test suite
