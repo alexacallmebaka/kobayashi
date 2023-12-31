@@ -31,6 +31,7 @@ type Parser = Parsec Void KT.KBYStream
 data InlineID = PlainText
               | Bold
               | Italic 
+              | Verb
               | Link deriving (Eq, Generic)
 
 instance Hashable InlineID
@@ -49,7 +50,7 @@ blockElem = choice [ paragraph
                    , oneTokenBlock KT.BeginHeader (\x -> KD.Header x)
                    , oneTokenBlock KT.BeginSubheader (\x -> KD.Subheader x)
                    , unorderedList
-                   , verb ]
+                   , codeListing ]
 
 paragraph :: Parser KD.BlockElem
 paragraph = KD.Paragraph <$> some inlineElem <* endOfBlock
@@ -64,13 +65,13 @@ image = do
   return $ KD.Image src
 
 
-verb :: Parser KD.BlockElem
-verb = do
-  basicToken KT.BeginVerbBlock
+codeListing :: Parser KD.BlockElem
+codeListing = do
+  basicToken KT.BeginCodeListing
   text <- some plainText
-  basicToken KT.EndVerbBlock
+  basicToken KT.EndCodeListing
   endOfBlock
-  return $ KD.VerbBlock text
+  return $ KD.CodeListing text
 
 unorderedList :: Parser KD.BlockElem
 unorderedList = KD.UnorderedList <$> (some unorderedListItem <* endOfBlock)
@@ -155,6 +156,7 @@ plainText = KD.PlainText . T.concat <$> some textChar
 basicInlineChoices :: HM.HashMap InlineID (Parser KD.InlineElem)
 basicInlineChoices = HM.fromList [ (Bold, wrapsText (\x -> KD.Bold x) KT.Bold Bold)
                             , (Italic, wrapsText (\x -> KD.Italic x) KT.Italic Italic)
+                            , (Verb, wrapsText (\x -> KD.Verb x) KT.Verb Verb)
                             , (PlainText, plainText)
                             , (Link, link) ]
 

@@ -24,10 +24,11 @@ data KBYToken = BeginHeader
               | UnorderedListItem
               | BeginImg
               | EndImg
-              | BeginVerbBlock
-              | EndVerbBlock
+              | BeginCodeListing
+              | EndCodeListing
               | Bold 
               | Italic
+              | Verb
               | LinkStart
               | LinkEnd
               | LinkSep
