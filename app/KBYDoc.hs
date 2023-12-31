@@ -24,6 +24,7 @@ data BlockElem = Paragraph [InlineElem]
                | Header [InlineElem]
                | Subheader [InlineElem] 
                | UnorderedList [UnorderedListItem]
+               | VerbBlock [InlineElem]
                | Image URL deriving (Eq, Show, Ord)
 
 --inline elements that represent rich text can be arbitrarily nested.
@@ -43,6 +44,7 @@ instance HTML BlockElem where
     --TODO: i would like to make asset dir user configurable
     htmlify (Image (AssetRef src)) = "<img src=\"/assets" ++ ( T.unpack src ) ++ "\">"
     htmlify (Image (RemoteRef src)) = "<img src=\"" ++ ( T.unpack src ) ++ "\">"
+    htmlify (VerbBlock text) = wrap text PRE
 
 instance HTML InlineElem where
     htmlify (Bold inner) = wrap inner Strong

@@ -27,6 +27,7 @@ data Tag = Strong
          | H2
          | UL
          | LI
+         | PRE
          | A LinkSource
          | P deriving (Generic, Eq)
 
@@ -40,12 +41,13 @@ instance Show Tag where
     show UL = "ul"
     show LI = "li"
     show P = "p"
+    show PRE = "pre"
     show (A _) = "a"
 --1}}}
 
 --tags that take up thier own line.
 standaloneTags :: HS.HashSet Tag
-standaloneTags = HS.fromList [P, UL, LI]
+standaloneTags = HS.fromList [P, UL, LI, PRE]
 
 isStandalone :: Tag -> Bool
 isStandalone x = HS.member x standaloneTags
@@ -59,6 +61,7 @@ htmlFold = foldl (\acc x -> acc ++ htmlify x) ""
 
 --generate start and end tag strings from a tag.
 genTags :: Tag -> (String, String)
+genTags PRE  = ("<pre class=\"code\">\n", "</pre>")
 genTags UL  = ("<ul>\n", "</ul>")
 genTags LI  = ("<li>\n", "\n</li>\n")
 genTags (A src) = (start, "</a>")

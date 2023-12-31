@@ -24,6 +24,8 @@ data KBYToken = BeginHeader
               | UnorderedListItem
               | BeginImg
               | EndImg
+              | BeginVerbBlock
+              | EndVerbBlock
               | Bold 
               | Italic
               | LinkStart

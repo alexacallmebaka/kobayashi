@@ -30,6 +30,7 @@ file = KBYStream . concat <$> (some (choice [psuedoBlock, block]) <* eof)
 
 block :: Parser [KBYWithInfo]
 block = choice [ unorderedList
+               , verbBlock
                , paragraph ]
 
 paragraph :: Parser [KBYWithInfo]
@@ -56,6 +57,22 @@ unorderedListEnd = do
     (() <$ eol) <|> eof
     let txt = "\\n\\n"
     return $ KBYWithInfo startPos txt EndOfBlock
+
+verbBlock :: Parser [KBYWithInfo]
+verbBlock = do
+  start <- verbMarker BeginVerbBlock
+  eol
+  (contents,end) <- someTill_ textChar (verbMarker EndVerbBlock)
+  eob <- endOfBlock
+  return $ [start] ++ contents ++ [end] ++ [eob]
+
+  
+verbMarker :: KBYToken -> Parser KBYWithInfo
+verbMarker beginOrEnd = do
+    startPos <- getSourcePos
+    string "```"
+    return $ KBYWithInfo startPos "```" beginOrEnd
+
 
 --elements that act as block elements but functionally take up one line.
 psuedoBlock :: Parser [KBYWithInfo]

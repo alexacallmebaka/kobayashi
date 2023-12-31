@@ -44,11 +44,12 @@ file :: Parser KD.Document
 file = some blockElem <* eof
 
 blockElem :: Parser KD.BlockElem
-blockElem = choice [ oneTokenBlock KT.BeginHeader (\x -> KD.Header x)
+blockElem = choice [ paragraph
+                   , image 
+                   , oneTokenBlock KT.BeginHeader (\x -> KD.Header x)
                    , oneTokenBlock KT.BeginSubheader (\x -> KD.Subheader x)
                    , unorderedList
-                   , paragraph 
-                   , image ]
+                   , verb ]
 
 paragraph :: Parser KD.BlockElem
 paragraph = KD.Paragraph <$> some inlineElem <* endOfBlock
@@ -61,6 +62,15 @@ image = do
   basicToken KT.EndImg
   endOfBlock
   return $ KD.Image src
+
+
+verb :: Parser KD.BlockElem
+verb = do
+  basicToken KT.BeginVerbBlock
+  text <- some plainText
+  basicToken KT.EndVerbBlock
+  endOfBlock
+  return $ KD.VerbBlock text
 
 unorderedList :: Parser KD.BlockElem
 unorderedList = KD.UnorderedList <$> (some unorderedListItem <* endOfBlock)
