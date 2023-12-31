@@ -57,13 +57,15 @@ instance HTML BlockElem where
     htmlify (Subheader inner) = wrap inner H2
     htmlify (Paragraph inner) = wrap inner P
     htmlify (UnorderedList inner) = wrap inner UL
-    htmlify (Image url) = "<img src=\"" ++ (T.unpack $ refSrc url) ++ "\">"
+    --need to somehow ctahc and throw errors when i dont have an assetref here.
+    htmlify (Image (AssetRef src)) = "<img src=\"/assets" ++ ( T.unpack src ) ++ "\">"
+    htmlify (Image (RemoteRef src)) = "<img src=\"" ++ ( T.unpack src ) ++ "\">"
 
 instance HTML InlineElem where
     htmlify (Bold inner) = wrap inner Strong
     htmlify (Italic inner) = wrap inner Em
     htmlify (Link title (PageRef url)) = wrap title (A $ T.unpack url)
-    htmlify (Link title (AssetRef url)) = wrap title (A $ T.unpack url)
+    htmlify (Link title (AssetRef url)) = wrap title (A $ "/assets" ++ (T.unpack url) )
     htmlify (Link title (RemoteRef url)) = wrap title (A $ T.unpack url)
     htmlify (PlainText inner) = T.unpack inner 
 

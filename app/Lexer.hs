@@ -89,9 +89,12 @@ headerPrefix = do
 image :: Parser [KBYWithInfo]
 image = do
   start <- basicInline '<' BeginImg
+  maybeAssetRef <- optional $ basicInline '$' AssetRef
   (content,end) <- manyTill_ textChar ( try (basicInline '>' EndImg) )
   eob <- endOfBlock
-  return $ [start] ++ content ++ [end] ++ [eob]
+  case maybeAssetRef of
+    (Just ref) -> return $ [start] ++ [ref]  ++ content ++ [end] ++ [eob]
+    Nothing -> return $ [start] ++ content ++ [end] ++ [eob]
 
 --1}}}
 
