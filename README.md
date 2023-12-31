@@ -1,3 +1,7 @@
+# WARNING
+The docs are currently out of date, but things are changing quickly. Once development settles down, 
+the docs will be updated.
+
 # What is Kobayashi?
 
 Kobayashi is a tool for generating static websites! It takes `.kby` files and transforms them into `HTML`.
@@ -52,7 +56,6 @@ source code using [Cabal](https://www.haskell.org/cabal/).
 cabal install
 ```
 
-
 You can then build individual `.kby` files with. 
 
 ```
@@ -74,22 +77,23 @@ kobayashi help
 
 Here is my current list of to-dos before the first release:
 
-* Batch builds.
+Definite includes:
 * Code blocks/verbatim.
-* Underline.
-* Strikethrough.
+* CSS support.
+* Config file
+* Better docs (GitHub wiki?? Page on my site??).
+
+Nice to have:
+* Individual file builds.
+* Macros that expand to preformatted HTML.
 * Embedded `HTML` (kinda goes with the macros).
-* Navbar/macros.
-* Config file?
-* Add CSS.
-* Pretty `HTML` formatting.
 * Comments.
 * Math.
 * BNF grammar for kby spec.
 * Templates (w/ params too)
 * Check if files/images linked to exist.
-* Test suite
 
 Some other ideas for after a stable release:
+* Test suite
 * Look into RSS feeds for site.
-* WYSIWYG editor that kobayashi can also build from. 
+* WYSIWYG editor that kobayashi can also build from (gui makes things in IR)

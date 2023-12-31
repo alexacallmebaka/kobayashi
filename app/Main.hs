@@ -19,6 +19,11 @@ import Builder
 import Error
 --1}}}
 
+--general todos:
+--static checking link paths to make sure they exist
+--make root index file user configurable
+--make asset dir user configurable
+
 --define args which operate on input.
 dispatch :: Map.Map String (Map.Map String String -> String -> IO ()) --{{{1
 dispatch = Map.fromList [("build", build)]
@@ -26,14 +31,7 @@ dispatch = Map.fromList [("build", build)]
 
 --build {{{1
 
---need to handle other files like images...
---maybe static asset dir... gonna need to make other link type just "asset link"... them i can also 
---garuntee that the thing exists which could be cool
---make this folder path user configurable... will make need to pass a map to the builder (i.e. htmlify) with this info
-
---unrelated... but i should also make garuntees about file stypes for images. (i.e. is png or jpg)
-
---skip asset dir
+--TODO: skip asset dir
 getChildren :: Os.OsPath -> IO [Os.OsPath] --{{{2
 getChildren dir = OsPath.listDirectory dir >>= filterM ( \x -> OsPath.doesDirectoryExist $ Os.combine dir x ) 
 --2}}}
@@ -123,7 +121,7 @@ help = mapM_ putStrLn [ "Usage: kobayashi [options] <command> \n"
     , "-odir /path/to/output/directory:\t specify an output directory for the html files."
     ,"\ncommands"
     , "============"
-    , "build /path/to/source.kby:\t build .kby file to html."
+    , "build /path/to/source/dir:\t build a directory of .kby files to html."
     ]
 --2}}}
 
