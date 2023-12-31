@@ -18,12 +18,15 @@ import Error
 
 type SourceName = String
 
-addCss :: String
-addCss = "<link rel=\"stylesheet\" href=\"/assets/style.css\">\n"
+motd :: String
+motd = "<!--Made with <3 using Kobayashi: https://github.com/alexacallmebaka/kobayashi-->\n"
+
+css :: String
+css = "<link rel=\"stylesheet\" href=\"/assets/style.css\">\n"
 
 --htmlify internal Document.
 toHTML :: Document -> String --{{{1
-toHTML doc = "<!DOCTYPE HTML>\n<!--Made with <3 using Kobayashi: https://github.com/alexacallmebaka/kobayashi-->\n<html>\n" ++ addCss ++ "<body>\n" ++  content ++ "</body>\n</html>\n"
+toHTML doc = "<!DOCTYPE HTML>\n" ++ motd ++ "<head>\n"++ css ++ "</head>\n<html>\n<body>\n" ++  content ++ "</body>\n</html>\n"
     where content = concatMap ((++ "\n") . htmlify) doc
 --1}}}
 
