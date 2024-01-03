@@ -4,10 +4,15 @@ module Main where
 import qualified Data.Map as Map
 import qualified System.Directory.OsPath as OsPath
 import qualified System.OsPath as Os
+import qualified Data.Text.IO as TIO
+
+import Data.Text (Text)
 import qualified Data.Text as T (pack)
 
+import Toml (TomlCodec, (.=))
+import qualified Toml
+
 import Data.List (intercalate)
-import System.IO
 import System.Environment (getArgs)
 import System.CPUTime (getCPUTime)
 import System.FilePath
@@ -23,6 +28,28 @@ import Error
 --static checking link paths to make sure they exist
 --make root index file user configurable
 --make asset dir user configurable
+---switch IO ops to text
+
+--modeling our toml file
+data Config = Config { project :: Project }
+
+data Project = Project
+  { buildDir :: Text
+  , assetsDir :: Text
+  , cssPath :: Text
+  , homepageName :: Text
+  }
+
+
+configCodec :: TomlCodec Config
+configCodec = Config <$> Toml.table projectConfig "project" .= project
+
+projectConfig :: TomlCodec Project
+projectConfig = Project
+  <$> Toml.text "build_dir" .= buildDir
+  <*> Toml.text "assets_dir" .= assetsDir
+  <*> Toml.text "css_path" .= cssPath
+  <*> Toml.text "homepage_name" .= homepageName
 
 --define args which operate on input.
 dispatch :: Map.Map String (Map.Map String String -> String -> IO ()) --{{{1
@@ -59,8 +86,8 @@ build flags sourceString = do
     case kbyToHtml sourceString (T.pack input) of
       Left err -> do
         let errType = case err of
-                       (LexError _) -> "lexical"
-                       (ParseError _) -> "syntactic"
+                       (LexError _) -> "lexical" :: String
+                       (ParseError _) -> "syntactic" :: String
         printf "[ERROR] halting build of %s due to %s error:\n" (dropFileName outpath) errType
         putStr $ unError err
       Right page -> writeFile outpath page
@@ -99,8 +126,8 @@ buildPage outdir source = do
                  case kbyToHtml sourceString (T.pack input) of
                    Left err -> do
                            let errType = case err of
-                                           (LexError _) -> "lexical"
-                                           (ParseError _) -> "syntactic"
+                                           (LexError _) -> "lexical" :: String
+                                           (ParseError _) -> "syntactic" :: String
                            printf "[ERROR] halting build of %s due to %s error:\n" (dropFileName outpath) errType
                            putStr $ unError err
                    Right page -> writeFile outpath page
@@ -155,5 +182,9 @@ processCMD _ x = printf "[ERROR] Command with too many arguments: \"%s\". Perhap
 main = do --{{{1
     args <- getArgs
     let (opts, cmd) = processFlags Map.empty args
+    tomlRes <- Toml.decodeFileEither configCodec "kobayashi.toml"
+    case tomlRes of
+        Left errs      -> TIO.putStrLn $ Toml.prettyTomlDecodeErrors errs
+        Right settings -> TIO.putStrLn $ Toml.encode configCodec settings
     processCMD opts cmd
 --1}}}

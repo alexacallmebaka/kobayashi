@@ -96,3 +96,4 @@ Some other ideas for after a stable release:
 * Test suite
 * Look into RSS feeds for site.
 * WYSIWYG editor that kobayashi can also build from (gui makes things in IR)
+* init command that sets up a skeleton directory
