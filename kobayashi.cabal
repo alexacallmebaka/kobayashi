@@ -34,11 +34,12 @@ executable kobayashi
                    Builder,
                    Error
 
+    default-extensions: OverloadedStrings
+
     -- LANGUAGE extensions used by modules in this package.
     other-extensions: TypeFamilies,
                       RecordWildCards,
                       DeriveGeneric,
-                      OverloadedStrings
 
     build-depends:    base ^>=4.16.4.0,
                       megaparsec ^>=9.3.1,

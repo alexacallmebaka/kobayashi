@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 --lex input file.
 module Lexer (
     tokenize
