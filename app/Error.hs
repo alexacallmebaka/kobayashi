@@ -1,5 +1,6 @@
 module Error
   ( BuildError(..)
+  , ErrorMsg
   ) where
 
 type ErrorMsg = String
