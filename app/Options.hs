@@ -8,6 +8,7 @@ module Options
   , makeOptions
   , defaultPartialOptions
   , configCodec      
+  , partialOptionsFromFlags
   ) where
 
 --implements the partial options monoid design pattern
@@ -19,6 +20,7 @@ import Data.Monoid
 import Path
 import Toml (TomlCodec, (.=))
 import qualified Toml
+import qualified Data.Map as Map
 
 import Error
 
@@ -33,14 +35,14 @@ data Options = Options
   { oBuildDir :: Path Rel Dir
   , oAssetsDir :: Path Abs Dir
   , oCssPath :: Path Abs File
-  , oHomepageName :: Text
+  , oHomepageName :: String
   } deriving (Show, Eq)
 
 data PartialOptions = PartialOptions
   { poBuildDir :: Last (Path Rel Dir)
   , poAssetsDir :: Last (Path Abs Dir)
   , poCssPath :: Last (Path Abs File)
-  , poHomepageName :: Last Text
+  , poHomepageName :: Last String
   } deriving (Show, Eq)
 
 instance Semigroup PartialOptions where
@@ -66,12 +68,19 @@ textToRelDir input = maybe (Left $ "Invalid relative directory path: " `append` 
 pathToText :: Path b t -> Text
 pathToText = pack . toFilePath
 
+--parse PartialOptions from "projects" table in TOML file.
 partialOptionsCodec :: TomlCodec PartialOptions
 partialOptionsCodec = PartialOptions
   <$> Toml.last ( Toml.textBy pathToText textToRelDir ) "build_dir" .= poBuildDir
   <*> Toml.last ( Toml.textBy pathToText textToAbsDir ) "assets_dir" .= poAssetsDir
   <*> Toml.last ( Toml.textBy pathToText textToAbsFile ) "css_path" .= poCssPath
-  <*> Toml.last Toml.text "homepage_name" .= poHomepageName
+  <*> Toml.last Toml.string "homepage_name" .= poHomepageName
+
+
+--create a PartialOptions object from a map of parsed flags. 
+partialOptionsFromFlags :: Map.Map String String -> PartialOptions
+partialOptionsFromFlags flags = mempty
+  { poBuildDir = Last $ ( Map.lookup "-odir" flags >>= parseRelDir ) }
 
 lastToEither :: String -> Last a -> Either String a
 lastToEither errMsg (Last x) = maybe (Left errMsg) Right x

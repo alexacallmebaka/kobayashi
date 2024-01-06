@@ -1,26 +1,29 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Main where
 
 -- imports {{{1
 import qualified Data.Map as Map
-import qualified System.Directory.OsPath as OsPath
-import qualified System.OsPath as Os
 import qualified Data.Text.IO as TIO
 
 import Data.Text (Text)
+import Data.Monoid
 import qualified Data.Text as T (pack)
 
-import Toml (TomlCodec, (.=))
 import qualified Toml
+import Path
 
 import Data.List (intercalate)
 import System.Environment (getArgs)
 import System.CPUTime (getCPUTime)
-import System.FilePath
+import qualified System.FilePath as SysPath
 import System.Directory
+import System.Exit (die)
 import Text.Printf (printf)
 import Control.Monad
 
 import Builder
+import Options
 import Error
 --1}}}
 
@@ -28,109 +31,77 @@ import Error
 --static checking link paths to make sure they exist
 --make root index file user configurable
 --make asset dir user configurable
----switch IO ops to text
-
---modeling our toml file
-data Config = Config { project :: Project }
-
-data Project = Project
-  { buildDir :: Text
-  , assetsDir :: Text
-  , cssPath :: Text
-  , homepageName :: Text
-  }
-
-
-configCodec :: TomlCodec Config
-configCodec = Config <$> Toml.table projectConfig "project" .= project
-
-projectConfig :: TomlCodec Project
-projectConfig = Project
-  <$> Toml.text "build_dir" .= buildDir
-  <*> Toml.text "assets_dir" .= assetsDir
-  <*> Toml.text "css_path" .= cssPath
-  <*> Toml.text "homepage_name" .= homepageName
-
---define args which operate on input.
-dispatch :: Map.Map String (Map.Map String String -> String -> IO ()) --{{{1
-dispatch = Map.fromList [("build", build)]
---1}}}
+--switch IO ops to text
+--switch everything over to Path module
+--use new options object
 
 --build {{{1
 
 --TODO: skip asset dir
-getChildren :: Os.OsPath -> IO [Os.OsPath] --{{{2
-getChildren dir = OsPath.listDirectory dir >>= filterM ( \x -> OsPath.doesDirectoryExist $ Os.combine dir x ) 
+getChildren :: Path Rel Dir -> IO [Path Rel Dir] --{{{2
+getChildren dir = do
+  dirContents <- listDirectory (toFilePath dir)
+  children <- withCurrentDirectory (toFilePath dir) (filterM doesDirectoryExist dirContents)
+  typedChildren <- mapM parseRelDir children
+  return $ map ( \x -> dir </> x ) typedChildren
 --2}}}
 
 --TODO: make case insensitive, 
-getKbyFiles :: Os.OsPath -> IO [Os.OsPath] --{{{2
+getKbyFiles :: Path Rel Dir -> IO [Path Rel File] --{{{2
 getKbyFiles dir = do
-  ext <- Os.encodeUtf ".kby"
-  OsPath.listDirectory dir >>= \y -> return $ filter (\x -> ( Os.takeExtension x ) == ext ) y
+  dirContents <- listDirectory (toFilePath dir)
+  let kbyFiles = filter (\x -> SysPath.takeExtension x == ".kby") dirContents
+  typedFileNames <- mapM parseRelFile kbyFiles
+  return $ map ( \x -> dir </> x ) typedFileNames
 --2}}}
 
---takes directory
-build :: Map.Map String String -> String -> IO () --{{{2
-build flags sourceString = do
-    odir <- case Map.lookup "-odir" flags of
-               Just custom -> Os.encodeUtf custom >>= OsPath.makeAbsolute
-               Nothing -> OsPath.getCurrentDirectory
-    source <- Os.encodeUtf sourceString
-    start <- getCPUTime
-    rootIndex <- Os.encodeUtf "index.html"
-    --error handling for if index doesnt exist
-    outpath <- Os.decodeUtf odir >>= \x -> return $ x </> "index.html"
-    input <- readFile $ sourceString </> "index.kby"
-    printf "Building %s...\n" (dropFileName outpath)
-    case kbyToHtml sourceString (T.pack input) of
+build :: Options -> Path Rel Dir -> IO () --{{{2
+build opts src = do
+    let srcString = toFilePath src
+    let homepage = oHomepageName opts
+    input <- TIO.readFile $ srcString SysPath.</> homepage
+    printf "Building %s...\n" homepage
+    case kbyToHtml homepage input of
       Left err -> do
         let errType = case err of
                        (LexError _) -> "lexical" :: String
                        (ParseError _) -> "syntactic" :: String
-        printf "[ERROR] halting build of %s due to %s error:\n" (dropFileName outpath) errType
+        --TODO: print to stderr, gather and report errors at some point??
+        printf "[ERROR] halting build of %s due to %s error:\n" srcString errType
         putStr $ unError err
-      Right page -> writeFile outpath page
-    children <- getChildren source
-    files <- getKbyFiles source
-    OsPath.withCurrentDirectory source $ mapM_ ( buildSite odir ) ( filter ( /= rootIndex ) ( files ++ children ) )
-    end <- getCPUTime
-    let time = fromIntegral (end-start) / (10^12)
-      in printf "Finished in %0.4f sec.\n" (time :: Double)
+      Right page -> writeFile ( toFilePath $ (oBuildDir opts)</>[relfile|index.html|] ) page
+    children <- getChildren src
+    files <- getKbyFiles src
+    typedHomepage <- parseRelFile homepage >>= \x -> return $ src </> x
+    mapM_ ( buildDir opts ) children
+    mapM_ ( buildPage opts ) $ filter (/= typedHomepage) files
 --2}}}
 
-buildSite :: Os.OsPath -> Os.OsPath -> IO () --{{{2
-buildSite odir source = do
-  OsPath.createDirectoryIfMissing True odir
-  isFile <- OsPath.doesFileExist source
-  case isFile of
-    True -> buildPage odir source
-    False -> do
-      isDir <- OsPath.doesDirectoryExist source
-      case isDir of
-        False -> printf "[ERROR] %s is not a Kby file or directory." (show source)
-        True -> do
-          children <- getChildren source
-          files <- getKbyFiles source
-          OsPath.withCurrentDirectory source $ mapM_ ( buildSite ( Os.combine odir source ) ) ( files ++ children )
+buildDir :: Options -> Path Rel Dir -> IO () --{{{2
+buildDir opts src = do
+  children <- getChildren src
+  files <- getKbyFiles src
+  mapM_ ( buildDir opts ) children
+  mapM_ ( buildPage opts ) files
 --2}}}
 
-buildPage :: Os.OsPath -> Os.OsPath -> IO () --{{{2
-buildPage outdir source = do
-                 sourceString <- Os.decodeUtf source
-                 outdirString <- Os.decodeUtf outdir >>= \x -> return $ x </> (dropExtension sourceString)
-                 createDirectoryIfMissing True outdirString
-                 let outpath = outdirString </> "index.html"
-                 input <- readFile sourceString
-                 printf "Building %s...\n" (dropFileName outpath)
-                 case kbyToHtml sourceString (T.pack input) of
-                   Left err -> do
-                           let errType = case err of
-                                           (LexError _) -> "lexical" :: String
-                                           (ParseError _) -> "syntactic" :: String
-                           printf "[ERROR] halting build of %s due to %s error:\n" (dropFileName outpath) errType
-                           putStr $ unError err
-                   Right page -> writeFile outpath page
+buildPage :: Options -> Path Rel File -> IO () --{{{2
+buildPage opts src = do
+  let srcString = toFilePath src
+  (fileName,_) <- splitExtension $ filename src
+  folderName <- parseRelDir $ toFilePath fileName
+  dir <- replaceProperPrefix [reldir|src|] (oBuildDir opts) src >>= \x -> return $ parent x </> folderName
+  createDirectoryIfMissing True (toFilePath dir)
+  input <- TIO.readFile srcString
+  printf "Building %s...\n" srcString
+  case kbyToHtml srcString input of
+    Left err -> do
+      let errType = case err of
+                      (LexError _) -> "lexical" :: String
+                      (ParseError _) -> "syntactic" :: String
+      printf "[ERROR] halting build of %s due to %s error:\n" srcString errType
+      putStr $ unError err
+    Right page -> writeFile ( toFilePath $ dir </> [relfile|index.html|] ) page
 --2}}}
 
 --1}}}
@@ -154,24 +125,28 @@ help = mapM_ putStrLn [ "Usage: kobayashi [options] <command> \n"
 
 --1}}}
 
---arg handlers. {{{1
 
---process flags.
-processFlags :: Map.Map String String -> [String] -> (Map.Map String String, [String]) --{{{2
-processFlags flags x@(flg:arg:xs) = case flg `elem` options of
+--return map of flags and arguments from command.
+parseFlags :: Map.Map String String -> [String] -> (Map.Map String String, [String]) --{{{2
+parseFlags flags x@(flg:arg:xs) = case flg `elem` options of
                                       False -> (flags, x)
-                                      True -> processFlags newFlags xs
+                                      True -> parseFlags newFlags xs
                                           where newFlags = Map.insert flg arg flags               
-processFlags flags x = (flags, x)
+parseFlags flags x = (flags, x)
 --2}}} 
 
+--arg handlers. {{{1
+
 --process command.
-processCMD :: Map.Map String String -> [String] -> IO () --{{{2
+processCMD :: Options -> [String] -> IO () --{{{2
 processCMD _  [] = putStrLn "No commands, nothing to do..."
 processCMD _ ["help"] = help
-processCMD opts (cmd:arg:[]) = case Map.lookup cmd dispatch of
-                                    Just action -> action opts arg
-                                    Nothing -> printf "[ERROR] halting due to invalid command: %s\n" cmd
+processCMD opts ("build":arg:[]) = do
+                            start <- getCPUTime
+                            parseRelDir arg >>= build opts
+                            end <- getCPUTime
+                            let time = fromIntegral (end-start) / (10^12)
+                              in printf "Finished in %0.4f sec.\n" (time :: Double)
 processCMD _ x = printf "[ERROR] Command with too many arguments: \"%s\". Perhaps options passed out of order?\n" $ intercalate " " x
 --2}}}
 
@@ -181,10 +156,19 @@ processCMD _ x = printf "[ERROR] Command with too many arguments: \"%s\". Perhap
 --entrypoint
 main = do --{{{1
     args <- getArgs
-    let (opts, cmd) = processFlags Map.empty args
+    let (flags, cmd) = parseFlags Map.empty args
+    let cmdOpts = partialOptionsFromFlags flags
+    --TODO: check if file exists
     tomlRes <- Toml.decodeFileEither configCodec "kobayashi.toml"
     case tomlRes of
-        Left errs      -> TIO.putStrLn $ Toml.prettyTomlDecodeErrors errs
-        Right settings -> TIO.putStrLn $ Toml.encode configCodec settings
-    processCMD opts cmd
+        Left errs -> do
+          putStrLn "[ERROR] Error(s) in kobayashi.toml:"
+          TIO.putStrLn $ Toml.prettyTomlDecodeErrors errs
+        Right (Config tomlOpts) -> do
+          let opts = makeOptions $ defaultPartialOptions <> tomlOpts <> cmdOpts
+          case opts of
+            Right options -> processCMD options cmd
+            Left err -> do
+              putStrLn "[ERROR] Error(s) in configuration:"
+              print err
 --1}}}
