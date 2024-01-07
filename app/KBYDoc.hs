@@ -7,8 +7,11 @@ module KBYDoc
     ) where
 
 import qualified Data.Text as T
+import Path
+import qualified System.FilePath as SysPath
 
 import HTML
+import Options
 
 --types {{{1
 type Document = [BlockElem]
@@ -37,24 +40,26 @@ data InlineElem = Bold [InlineElem]
 
 --how to turn doc to html.
 instance HTML BlockElem where
-    htmlify (Header inner) = wrap inner H1
-    htmlify (Subheader inner) = wrap inner H2
-    htmlify (Paragraph inner) = wrap inner P
-    htmlify (UnorderedList inner) = wrap inner UL
+    htmlify opts (Header inner) = wrap opts inner H1
+    htmlify opts (Subheader inner) = wrap opts inner H2
+    htmlify opts (Paragraph inner) = wrap opts inner P
+    htmlify opts (UnorderedList inner) = wrap opts inner UL
     --need to somehow throw errors when i dont have an assetref here.
     --TODO: i would like to make asset dir user configurable
-    htmlify (Image (AssetRef src)) = "<img src=\"/assets" ++ ( T.unpack src ) ++ "\">"
-    htmlify (Image (RemoteRef src)) = "<img src=\"" ++ ( T.unpack src ) ++ "\">"
-    htmlify (CodeListing text) = wrap text Pre
+    htmlify opts (Image (AssetRef src)) = "<img src=\"" ++ ( toFilePath $ oAssetsDir opts ) ++ assetPath ++ "\">"
+      where assetPath = SysPath.makeRelative "/" (T.unpack src)
+    htmlify opts (Image (RemoteRef src)) = "<img src=\"" ++ ( T.unpack src ) ++ "\">"
+    htmlify opts (CodeListing text) = wrap opts text Pre
 
 instance HTML InlineElem where
-    htmlify (Bold inner) = wrap inner Strong
-    htmlify (Italic inner) = wrap inner Em
-    htmlify (Verb inner) = wrap inner Code
-    htmlify (Link title (PageRef url)) = wrap title (A $ T.unpack url)
-    htmlify (Link title (AssetRef url)) = wrap title (A $ "/assets" ++ (T.unpack url) )
-    htmlify (Link title (RemoteRef url)) = wrap title (A $ T.unpack url)
-    htmlify (PlainText inner) = T.unpack inner 
+    htmlify opts (Bold inner) = wrap opts inner Strong
+    htmlify opts (Italic inner) = wrap opts inner Em
+    htmlify opts (Verb inner) = wrap opts inner Code
+    htmlify opts (Link title (PageRef url)) = wrap opts title (A $ T.unpack url)
+    htmlify opts (Link title (AssetRef url)) = wrap opts title (A $ (toFilePath $ oAssetsDir opts) ++ assetPath )
+      where assetPath = SysPath.makeRelative "/" (T.unpack url)
+    htmlify opts (Link title (RemoteRef url)) = wrap opts title (A $ T.unpack url)
+    htmlify opts (PlainText inner) = T.unpack inner 
 
 instance HTML UnorderedListItem where
-  htmlify (UnorderedListItem inner)  = wrap inner LI
+  htmlify opts (UnorderedListItem inner)  = wrap opts inner LI

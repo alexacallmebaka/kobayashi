@@ -36,7 +36,7 @@ css path = "<link rel=\"stylesheet\" href=\"" ++ (toFilePath path) ++ "\">\n"
 --htmlify internal Document.
 toHTML :: Options -> Document -> String --{{{1
 toHTML opts doc = "<!DOCTYPE HTML>\n" ++ motd ++ "<head>\n"++ ( css $ oCssPath opts ) ++ "</head>\n<html>\n<body>\n" ++  content ++ "</body>\n</html>\n"
-    where content = concatMap ((++ "\n") . htmlify) doc
+    where content = concatMap ( (++ "\n") . (htmlify opts) ) doc
 --1}}}
 
 --lex a file and return a stream of tokens or an error as a string.

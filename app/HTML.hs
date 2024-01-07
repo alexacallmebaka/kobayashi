@@ -16,6 +16,8 @@ import Data.Hashable
 import qualified Data.Text as T
 import GHC.Generics (Generic)
 
+import Options
+
 --types {{{1
 --html tags
 
@@ -55,11 +57,11 @@ isStandalone :: Tag -> Bool
 isStandalone x = HS.member x standaloneTags
 
 class HTML a where
-    htmlify :: a -> String
+    htmlify :: Options -> a -> String
 
 --fold up a list of html elements into an HTML string.
-htmlFold :: (HTML a) => [a] -> String 
-htmlFold = foldl (\acc x -> acc ++ htmlify x) ""
+htmlFold :: (HTML a) => Options -> [a] -> String 
+htmlFold opts = foldl (\acc x -> acc ++ htmlify opts x) ""
 
 --generate start and end tag strings from a tag.
 genTags :: Tag -> (String, String)
@@ -74,6 +76,6 @@ genTags x = ("<" ++ tag ++ ">" ++ nline, nline ++ "</" ++ tag ++ ">")
                   nline = if isStandalone x then "\n"  else ""
 
 --wrap a list of inner html in tags from outer html.
-wrap :: (HTML a) => [a] -> Tag -> String
-wrap inner tag = open ++ (htmlFold inner) ++ close
+wrap :: (HTML a) => Options -> [a] -> Tag -> String
+wrap opts inner tag = open ++ (htmlFold opts inner) ++ close
                where (open, close) = genTags tag
