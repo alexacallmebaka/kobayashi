@@ -1,11 +1,19 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 --build website from DocuElem.
 module Builder
-    ( kbyToHtml
+    ( build
     ) where
 
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
+import Text.Printf (printf)
 import Data.List
 import Data.Void
+import Path
+import qualified System.FilePath as SysPath
+import System.Directory
+import Control.Monad (filterM)
 
 import Text.Megaparsec.Error
 
@@ -14,6 +22,7 @@ import KBYDoc
 import KBYToken
 import Lexer
 import Parser
+import Options
 import Error
 
 type SourceName = String
@@ -43,10 +52,89 @@ parseFile source input = case parseTokens source input of
         Right doc -> Right doc
 
 
--- kby => html.
-kbyToHtml :: SourceName -> T.Text -> Either BuildError String --{{{1
+-- kby => html. {{{1
+kbyToHtml :: SourceName -> T.Text -> Either BuildError String --{{{2
 kbyToHtml source input = 
     case (lexFile source input) >>= (parseFile source) of
         Right doc -> Right $ toHTML doc
         Left x -> Left x
+--2}}}
+
+--1}}}
+
+-- IO {{{1
+
+getChildren :: Path Rel Dir -> IO [Path Rel Dir] --{{{2
+getChildren dir = do
+  dirContents <- listDirectory (toFilePath dir)
+  children <- withCurrentDirectory (toFilePath dir) (filterM doesDirectoryExist dirContents)
+  typedChildren <- mapM parseRelDir children
+  return $ map ( \x -> dir </> x ) typedChildren
+--2}}}
+
+getKbyFiles :: Path Rel Dir -> IO [Path Rel File] --{{{2
+getKbyFiles dir = do
+  dirContents <- listDirectory (toFilePath dir)
+  let kbyFiles = filter ( \x -> SysPath.takeExtension x == ".kby" || SysPath.takeExtension x == ".KBY" ) dirContents
+  typedFileNames <- mapM parseRelFile kbyFiles
+  return $ map ( \x -> dir </> x ) typedFileNames
+--2}}}
+
+--top level build. take special inital steps and the recursively builds
+--the whole directory
+build :: Options -> Path Rel Dir -> IO () --{{{2
+build opts src = do
+    let srcString = toFilePath src
+    let homepage = oHomepageName opts
+    input <- TIO.readFile $ srcString SysPath.</> homepage
+    printf "Building %s...\n" homepage
+    case kbyToHtml homepage input of
+      Left err -> do
+        let errType = case err of
+                       (LexError _) -> "lexical" :: String
+                       (ParseError _) -> "syntactic" :: String
+        --TODO: print to stderr, gather and report errors at some point??
+        printf "[ERROR] halting build of %s due to %s error:\n" srcString errType
+        putStr $ unError err
+      Right page -> writeFile ( toFilePath $ (oBuildDir opts)</>[relfile|index.html|] ) page
+    children <- getChildren src
+    files <- getKbyFiles src
+    typedHomepage <- parseRelFile homepage >>= \x -> return $ src </> x
+    let assetsDirAbsStr = toFilePath $ oAssetsDir opts
+    typedAssetsDirRel <- parseRelDir $ srcString SysPath.</> ( SysPath.makeRelative "/"  assetsDirAbsStr )
+    mapM_ ( buildDir opts ) $ filter (/= typedAssetsDirRel) children
+    mapM_ ( buildPage opts ) $ filter (/= typedHomepage) files
+--2}}}
+
+--build a given (non top level) directory.
+buildDir :: Options -> Path Rel Dir -> IO () --{{{2
+buildDir opts src = do
+  children <- getChildren src
+  files <- getKbyFiles src
+  mapM_ ( buildDir opts ) children
+  mapM_ ( buildPage opts ) files
+--2}}}
+
+--build a given kby file.
+buildPage :: Options -> Path Rel File -> IO () --{{{2
+buildPage opts src = do
+  let srcString = toFilePath src
+  (fileName,_) <- splitExtension $ filename src
+  folderName <- parseRelDir $ toFilePath fileName
+  dir <- replaceProperPrefix [reldir|src|] (oBuildDir opts) src >>= \x -> return $ parent x </> folderName
+  createDirectoryIfMissing True (toFilePath dir)
+  input <- TIO.readFile srcString
+  printf "Building %s...\n" srcString
+  case kbyToHtml srcString input of
+    Left err -> do
+      let errType = case err of
+                      (LexError _) -> "lexical" :: String
+                      (ParseError _) -> "syntactic" :: String
+      printf "[ERROR] halting build of %s due to %s error:\n" srcString errType
+      putStr $ unError err
+    Right page -> writeFile ( toFilePath $ dir </> [relfile|index.html|] ) page
+--2}}}
+
+--1}}}
+
 --1}}}
