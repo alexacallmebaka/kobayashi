@@ -30,12 +30,12 @@ type SourceName = String
 motd :: String
 motd = "<!--Made with <3 using Kobayashi: https://github.com/alexacallmebaka/kobayashi-->\n"
 
-css :: String
-css = "<link rel=\"stylesheet\" href=\"/assets/style.css\">\n"
+css :: Path Abs File -> String
+css path = "<link rel=\"stylesheet\" href=\"" ++ (toFilePath path) ++ "\">\n"
 
 --htmlify internal Document.
-toHTML :: Document -> String --{{{1
-toHTML doc = "<!DOCTYPE HTML>\n" ++ motd ++ "<head>\n"++ css ++ "</head>\n<html>\n<body>\n" ++  content ++ "</body>\n</html>\n"
+toHTML :: Options -> Document -> String --{{{1
+toHTML opts doc = "<!DOCTYPE HTML>\n" ++ motd ++ "<head>\n"++ ( css $ oCssPath opts ) ++ "</head>\n<html>\n<body>\n" ++  content ++ "</body>\n</html>\n"
     where content = concatMap ((++ "\n") . htmlify) doc
 --1}}}
 
@@ -53,10 +53,10 @@ parseFile source input = case parseTokens source input of
 
 
 -- kby => html. {{{1
-kbyToHtml :: SourceName -> T.Text -> Either BuildError String --{{{2
-kbyToHtml source input = 
+kbyToHtml :: Options -> SourceName -> T.Text -> Either BuildError String --{{{2
+kbyToHtml opts source input = 
     case (lexFile source input) >>= (parseFile source) of
-        Right doc -> Right $ toHTML doc
+        Right doc -> Right $ toHTML opts doc
         Left x -> Left x
 --2}}}
 
@@ -88,7 +88,7 @@ build opts src = do
     let homepage = oHomepageName opts
     input <- TIO.readFile $ srcString SysPath.</> homepage
     printf "Building %s...\n" homepage
-    case kbyToHtml homepage input of
+    case kbyToHtml opts homepage input of
       Left err -> do
         let errType = case err of
                        (LexError _) -> "lexical" :: String
@@ -125,7 +125,7 @@ buildPage opts src = do
   createDirectoryIfMissing True (toFilePath dir)
   input <- TIO.readFile srcString
   printf "Building %s...\n" srcString
-  case kbyToHtml srcString input of
+  case kbyToHtml opts srcString input of
     Left err -> do
       let errType = case err of
                       (LexError _) -> "lexical" :: String
