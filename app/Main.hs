@@ -22,12 +22,7 @@ import Options
 --1}}}
 
 --general todos:
---static checking link paths to make sure they exist
---make asset dir user configurable
 --switch IO ops to text
---switch everything over to Path module
----warning: bad toml options are silently ignore (i.e. relative path for assets) and defaults get used instead
---print current config?
 
 --actions {{{1
 
@@ -64,9 +59,11 @@ processCMD :: Options -> [String] -> IO () --{{{2
 processCMD _  [] = putStrLn "No commands, nothing to do..."
 processCMD _ ["help"] = help
 processCMD opts ("build":arg:[]) = do
+                            printf "Starting build of %s\n" arg
                             start <- getCPUTime
                             parseRelDir arg >>= build opts
                             end <- getCPUTime
+                            putChar '\n'
                             let time = fromIntegral (end-start) / (10^12)
                               in printf "Finished in %0.4f sec.\n" (time :: Double)
 processCMD _ x = printf "[ERROR] Command with too many arguments: \"%s\". Perhaps options passed out of order?\n" $ intercalate " " x
@@ -89,8 +86,7 @@ main = do --{{{1
         Right (Config tomlOpts) -> do
           let opts = makeOptions $ defaultPartialOptions <> tomlOpts <> cmdOpts
           case opts of
-            Right options -> processCMD options cmd
+            Right options -> print options >> putChar '\n' >> processCMD options cmd
             Left err -> do
-              putStrLn "[ERROR] Error(s) in configuration:"
-              print err
+              ( putStrLn "[ERROR] Error(s) in configuration:" ) >> print err
 --1}}}

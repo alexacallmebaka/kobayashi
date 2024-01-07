@@ -78,7 +78,6 @@ kobayashi help
 Here is my current list of to-dos before the first release:
 
 Definite includes:
-* Config file
 * Better docs (GitHub wiki?? Page on my site??).
 
 Nice to have:

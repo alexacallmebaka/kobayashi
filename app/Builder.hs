@@ -87,7 +87,7 @@ build opts src = do
     let srcString = toFilePath src
     let homepage = oHomepageName opts
     input <- TIO.readFile $ srcString SysPath.</> homepage
-    printf "Building %s...\n" homepage
+    printf "Building %s...\n" $ srcString SysPath.</> homepage
     case kbyToHtml opts homepage input of
       Left err -> do
         let errType = case err of

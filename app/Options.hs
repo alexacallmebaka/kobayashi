@@ -36,7 +36,13 @@ data Options = Options
   , oAssetsDir :: Path Abs Dir
   , oCssPath :: Path Abs File
   , oHomepageName :: String
-  } deriving (Show, Eq)
+  } deriving (Eq)
+
+instance Show Options where
+  show Options{..} = "[Current Configuration]\nBuild Directory: " ++ (show oBuildDir)
+                     ++ "\nAssets Directory: " ++ (show oAssetsDir)
+                     ++ "\nPath to CSS: " ++ (show oCssPath)
+                     ++ "\nHomepage: " ++ (show oHomepageName)
 
 data PartialOptions = PartialOptions
   { poBuildDir :: Last (Path Rel Dir)
