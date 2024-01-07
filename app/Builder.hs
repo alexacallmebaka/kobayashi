@@ -82,6 +82,9 @@ getKbyFiles dir = do
 
 --top level build. take special inital steps and the recursively builds
 --the whole directory
+--since we now treat standalone index as special i probably do not need to take a special index name, i think i can
+--just call buildir now... maybe... No! Asset dir is special, but maybe i check for that everywhere because in theory
+--it could be anywhere.
 build :: Options -> Path Rel Dir -> IO () --{{{2
 build opts src = do
     let srcString = toFilePath src
@@ -94,6 +97,11 @@ build opts src = do
                        (LexError _) -> "lexical" :: String
                        (ParseError _) -> "syntactic" :: String
         --TODO: print to stderr, gather and report errors at some point??
+        --maybe gather errors in list or something as we go along and print a summary of errors/not at end??
+        --maybe i just return a list of unexecuted io actions and then execute everything with a sequebce
+        --i can return either Err IO Text, then partition and report off of that?
+        --maybe either Err (IO ())??
+        --OR!! MAYBE I USE WRITERT/STATET TO DO IO AND MY LOGGING AT THE SAME TIME
         printf "[ERROR] halting build of %s due to %s error:\n" srcString errType
         putStr $ unError err
       Right page -> writeFile ( toFilePath $ (oBuildDir opts)</>[relfile|index.html|] ) page
@@ -121,7 +129,10 @@ buildPage opts src = do
   let srcString = toFilePath src
   (fileName,_) <- splitExtension $ filename src
   folderName <- parseRelDir $ toFilePath fileName
-  dir <- replaceProperPrefix [reldir|src|] (oBuildDir opts) src >>= \x -> return $ parent x </> folderName
+  --treat standalone index as special, can probably be optimized
+  dir <- case ( (filename src) == [relfile|index.kby|] ||  (filename src) == [relfile|index.KBY|] ) of
+           False -> replaceProperPrefix [reldir|src|] (oBuildDir opts) src >>= \x -> return $ parent x </> folderName
+           True -> replaceProperPrefix [reldir|src|] (oBuildDir opts) src >>= \x -> return $ parent x
   createDirectoryIfMissing True (toFilePath dir)
   input <- TIO.readFile srcString
   printf "Building %s...\n" srcString
