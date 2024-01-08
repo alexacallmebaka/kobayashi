@@ -81,7 +81,6 @@ Definite includes:
 * Better docs (GitHub wiki?? Page on my site??).
 
 Nice to have:
-* Individual file builds.
 * Macros that expand to preformatted HTML.
 * Embedded `HTML` (kinda goes with the macros).
 * Comments.
