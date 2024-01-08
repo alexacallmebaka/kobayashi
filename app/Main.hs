@@ -9,6 +9,7 @@ import Data.Monoid
 
 import qualified Toml
 
+import System.Directory (doesFileExist)
 import Data.List (intercalate)
 import System.Environment (getArgs)
 import System.CPUTime (getCPUTime)
@@ -28,7 +29,7 @@ import Options
 --actions {{{1
 
 options :: [String] --{{{2
-options = ["-odir"]
+options = ["-odir", "-cfg"]
 --2}}}
 
 help :: IO () --{{{2
@@ -36,6 +37,7 @@ help = mapM_ putStrLn [ "Usage: kobayashi [options] <command> \n"
     ,"options"
     , "============"
     , "-odir /path/to/output/directory:\t specify an output directory for the html files."
+    , "-cfg /path/to/config.toml:\t TOML file to use for project configuration details."
     ,"\ncommands"
     , "============"
     , "build /path/to/source/dir:\t build a directory of .kby files to html."
@@ -82,13 +84,20 @@ main = do --{{{1
     args <- getArgs
     let (flags, cmd) = parseFlags Map.empty args
     let cmdOpts = partialOptionsFromFlags flags
-    --TODO: check if file exists
-    tomlRes <- Toml.decodeFileEither configCodec "kobayashi.toml"
-    case tomlRes of
+    let tomlPathString = Map.findWithDefault "kobayashi.toml" "-cfg" flags
+    hasToml <- doesFileExist tomlPathString
+    if (hasToml) then
+      (putStrLn $ "Using: " ++ tomlPathString ++ "\n")
+    else
+      (putStrLn $ tomlPathString ++ " not found!\n")
+    tomlOpts <- case hasToml of
+                  False -> return . Right $ mempty
+                  True -> partialOptionsFromToml tomlPathString
+    case tomlOpts of
         Left errs -> do
           putStrLn "[ERROR] Error(s) in kobayashi.toml:"
           TIO.putStrLn $ Toml.prettyTomlDecodeErrors errs
-        Right (Config tomlOpts) -> do
+        Right tomlOpts -> do
           let opts = makeOptions $ defaultPartialOptions <> tomlOpts <> cmdOpts
           case opts of
             Right options -> print options >> putChar '\n' >> processCMD options cmd

@@ -9,6 +9,7 @@ module Options
   , defaultPartialOptions
   , configCodec      
   , partialOptionsFromFlags
+  , partialOptionsFromToml
   ) where
 
 --implements the partial options monoid design pattern
@@ -18,9 +19,10 @@ import Data.Text (Text, pack, unpack, append)
 import qualified Data.Semigroup --avoid collisons with monoid functions, paricularly the Last newtype.
 import Data.Monoid
 import Path
-import Toml (TomlCodec, (.=))
+import Toml (TomlCodec, (.=), TomlDecodeError)
 import qualified Toml
 import qualified Data.Map as Map
+import qualified System.FilePath as SysPath (FilePath)
 
 import Error
 
@@ -81,6 +83,13 @@ partialOptionsCodec = PartialOptions
 partialOptionsFromFlags :: Map.Map String String -> PartialOptions
 partialOptionsFromFlags flags = mempty
   { poBuildDir = Last $ ( Map.lookup "-odir" flags >>= parseRelDir ) }
+
+partialOptionsFromToml :: SysPath.FilePath -> IO (Either [TomlDecodeError] PartialOptions)
+partialOptionsFromToml path = do
+  tomlRes <- Toml.decodeFileEither configCodec path
+  case tomlRes of
+    Right (Config tomlOpts)  -> return . Right $ tomlOpts
+    Left x -> return . Left $ x
 
 lastToEither :: String -> Last a -> Either String a
 lastToEither errMsg (Last x) = maybe (Left errMsg) Right x
