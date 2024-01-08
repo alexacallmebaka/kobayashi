@@ -1,4 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 --build website from DocuElem.
 module Builder
@@ -9,6 +11,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Text.Printf (printf)
 import Data.List
+import Data.Char (toLower)
 import Data.Void
 import Path
 import qualified System.FilePath as SysPath
@@ -51,7 +54,6 @@ parseFile source input = case parseTokens source input of
         Left err -> Left . ParseError $ errorBundlePretty err
         Right doc -> Right doc
 
-
 -- kby => html. {{{1
 kbyToHtml :: Options -> SourceName -> T.Text -> Either BuildError String --{{{2
 kbyToHtml opts source input = 
@@ -64,7 +66,7 @@ kbyToHtml opts source input =
 
 -- IO {{{1
 
-getChildren :: Path Rel Dir -> IO [Path Rel Dir] --{{{2
+getChildren :: Path b Dir -> IO [Path b Dir] --{{{2
 getChildren dir = do
   dirContents <- listDirectory (toFilePath dir)
   children <- withCurrentDirectory (toFilePath dir) (filterM doesDirectoryExist dirContents)
@@ -72,68 +74,64 @@ getChildren dir = do
   return $ map ( \x -> dir </> x ) typedChildren
 --2}}}
 
-getKbyFiles :: Path Rel Dir -> IO [Path Rel File] --{{{2
+getKbyFiles :: Path b Dir -> IO [Path b File] --{{{2
 getKbyFiles dir = do
   dirContents <- listDirectory (toFilePath dir)
-  let kbyFiles = filter ( \x -> SysPath.takeExtension x == ".kby" || SysPath.takeExtension x == ".KBY" ) dirContents
+  let kbyFiles = filter ( \x -> (map toLower $ SysPath.takeExtension x) == ".kby" ) dirContents
   typedFileNames <- mapM parseRelFile kbyFiles
   return $ map ( \x -> dir </> x ) typedFileNames
 --2}}}
 
---top level build. take special inital steps and the recursively builds
---the whole directory
---since we now treat standalone index as special i probably do not need to take a special index name, i think i can
---just call buildir now... maybe... No! Asset dir is special, but maybe i check for that everywhere because in theory
---it could be anywhere.
-build :: Options -> Path Rel Dir -> IO () --{{{2
-build opts src = do
-    let srcString = toFilePath src
-    let homepage = oHomepageName opts
-    input <- TIO.readFile $ srcString SysPath.</> homepage
-    printf "Building %s...\n" $ srcString SysPath.</> homepage
-    case kbyToHtml opts homepage input of
-      Left err -> do
-        let errType = case err of
-                       (LexError _) -> "lexical" :: String
-                       (ParseError _) -> "syntactic" :: String
-        --TODO: print to stderr, gather and report errors at some point??
-        --maybe gather errors in list or something as we go along and print a summary of errors/not at end??
-        --maybe i just return a list of unexecuted io actions and then execute everything with a sequebce
-        --i can return either Err IO Text, then partition and report off of that?
-        --maybe either Err (IO ())??
-        --OR!! MAYBE I USE WRITERT/STATET TO DO IO AND MY LOGGING AT THE SAME TIME
-        printf "[ERROR] halting build of %s due to %s error:\n" srcString errType
-        putStr $ unError err
-      Right page -> writeFile ( toFilePath $ (oBuildDir opts)</>[relfile|index.html|] ) page
-    children <- getChildren src
-    files <- getKbyFiles src
-    typedHomepage <- parseRelFile homepage >>= \x -> return $ src </> x
-    let assetsDirAbsStr = toFilePath $ oAssetsDir opts
-    typedAssetsDirRel <- parseRelDir $ srcString SysPath.</> ( SysPath.makeRelative "/"  assetsDirAbsStr )
-    mapM_ ( buildDir opts ) $ filter (/= typedAssetsDirRel) children
-    mapM_ ( buildPage opts ) $ filter (/= typedHomepage) files
+
+--maybe i make a "buildable" typeclass or something that i make the paths members of so that i can call just a "build" function
+--that is polymorphic to dir or file if i am allowed to get rid of top level builds now
+
+class Buildable d s where
+  build :: Options -> d -> s -> IO () 
+
+instance Buildable (Path Rel Dir) (SomeBase Dir) where
+  build opts buildDir ( Abs dir ) = buildFldr opts buildDir dir
+  build opts buildDir ( Rel dir ) = buildFldr opts buildDir dir
+
+instance Buildable (Path Rel Dir) (SomeBase File) where
+  build opts buildDir ( Abs file ) = buildPage opts buildDir file
+  build opts buildDir ( Rel file ) = buildPage opts buildDir file
+
+instance Buildable (Path Rel Dir) (Path b Dir) where
+  build opts buildDir dir = buildFldr opts buildDir dir
+
+instance Buildable (Path Rel Dir) (Path b File) where
+  build opts buildDir file = buildPage opts buildDir file
+
+--TODO: print to stderr, gather and report errors at some point??
+--maybe gather errors in list or something as we go along and print a summary of errors/not at end??
+--maybe i just return a list of unexecuted io actions and then execute everything with a sequebce
+--i can return either Err IO Text, then partition and report off of that?
+--maybe either Err (IO ())??
+
+getFileDst :: Path b Dir -> Path Rel File -> IO (Path b File) --{{{2
+getFileDst dst file 
+  | (map toLower . toFilePath . filename $ file) ==  "index.kby" = return $ dst </> [relfile|index.html|]
+  | otherwise = (parseRelDir . SysPath.dropExtension . toFilePath $ file) >>= \x -> return $ dst </> x </> [relfile|index.html|]
 --2}}}
 
---build a given (non top level) directory.
-buildDir :: Options -> Path Rel Dir -> IO () --{{{2
-buildDir opts src = do
+--build a given directory.
+buildFldr :: Options -> Path Rel Dir -> Path b Dir -> IO () --{{{2
+buildFldr opts buildDir src = do
   children <- getChildren src
   files <- getKbyFiles src
-  mapM_ ( buildDir opts ) children
-  mapM_ ( buildPage opts ) files
+  mapM_ ( \x -> build opts ( buildDir </> (dirname x) ) x ) children
+  mapM_ ( build opts buildDir ) files
 --2}}}
 
 --build a given kby file.
-buildPage :: Options -> Path Rel File -> IO () --{{{2
-buildPage opts src = do
+buildPage :: Options -> Path Rel Dir -> Path b File -> IO () --{{{2
+buildPage opts buildDir src = do
   let srcString = toFilePath src
   (fileName,_) <- splitExtension $ filename src
   folderName <- parseRelDir $ toFilePath fileName
-  --treat standalone index as special, can probably be optimized
-  dir <- case ( (filename src) == [relfile|index.kby|] ||  (filename src) == [relfile|index.KBY|] ) of
-           False -> replaceProperPrefix [reldir|src|] (oBuildDir opts) src >>= \x -> return $ parent x </> folderName
-           True -> replaceProperPrefix [reldir|src|] (oBuildDir opts) src >>= \x -> return $ parent x
-  createDirectoryIfMissing True (toFilePath dir)
+  dst <- getFileDst buildDir (filename src)
+  createDirectoryIfMissing True (toFilePath $ parent dst)
   input <- TIO.readFile srcString
   printf "Building %s...\n" srcString
   case kbyToHtml opts srcString input of
@@ -143,7 +141,8 @@ buildPage opts src = do
                       (ParseError _) -> "syntactic" :: String
       printf "[ERROR] halting build of %s due to %s error:\n" srcString errType
       putStr $ unError err
-    Right page -> writeFile ( toFilePath $ dir </> [relfile|index.html|] ) page
+    --Right page -> writeFile ( toFilePath $ dir </> [relfile|index.html|] ) page
+    Right page -> writeFile (toFilePath dst) page
 --2}}}
 
 --1}}}

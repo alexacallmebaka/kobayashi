@@ -35,20 +35,17 @@ data Options = Options
   { oBuildDir :: Path Rel Dir
   , oAssetsDir :: Path Abs Dir
   , oCssPath :: Path Abs File
-  , oHomepageName :: String
   } deriving (Eq)
 
 instance Show Options where
   show Options{..} = "[Current Configuration]\nBuild Directory: " ++ (show oBuildDir)
                      ++ "\nAssets Directory: " ++ (show oAssetsDir)
                      ++ "\nPath to CSS: " ++ (show oCssPath)
-                     ++ "\nHomepage: " ++ (show oHomepageName)
 
 data PartialOptions = PartialOptions
   { poBuildDir :: Last (Path Rel Dir)
   , poAssetsDir :: Last (Path Abs Dir)
   , poCssPath :: Last (Path Abs File)
-  , poHomepageName :: Last String
   } deriving (Show, Eq)
 
 instance Semigroup PartialOptions where
@@ -56,11 +53,10 @@ instance Semigroup PartialOptions where
     { poBuildDir = poBuildDir lhs <> poBuildDir rhs
     , poAssetsDir = poAssetsDir lhs <> poAssetsDir rhs
     , poCssPath = poCssPath lhs <> poCssPath rhs
-    , poHomepageName = poHomepageName lhs <> poHomepageName rhs
     }
 
 instance Monoid PartialOptions where
-  mempty = PartialOptions mempty mempty mempty mempty
+  mempty = PartialOptions mempty mempty mempty
 
 textToAbsFile :: Text -> Either Text (Path Abs File)
 textToAbsFile input = maybe ( Left $ "Invalid absolute file path: " `append` input ) Right ( parseAbsFile $ unpack input )
@@ -80,8 +76,6 @@ partialOptionsCodec = PartialOptions
   <$> Toml.last ( Toml.textBy pathToText textToRelDir ) "build_dir" .= poBuildDir
   <*> Toml.last ( Toml.textBy pathToText textToAbsDir ) "assets_dir" .= poAssetsDir
   <*> Toml.last ( Toml.textBy pathToText textToAbsFile ) "css_path" .= poCssPath
-  <*> Toml.last Toml.string "homepage_name" .= poHomepageName
-
 
 --create a PartialOptions object from a map of parsed flags. 
 partialOptionsFromFlags :: Map.Map String String -> PartialOptions
@@ -96,8 +90,6 @@ makeOptions PartialOptions {..} = do
   oBuildDir <- lastToEither "Missing build directory" poBuildDir
   oAssetsDir <- lastToEither "Missing assets directory" poAssetsDir
   oCssPath <- lastToEither "Missing path to Css." poCssPath
-  oHomepageName <- lastToEither "Missing homepage name." poHomepageName
-
   return Options {..}
 
 defaultPartialOptions :: PartialOptions
@@ -105,5 +97,4 @@ defaultPartialOptions = PartialOptions
   { poBuildDir = pure [reldir|build|]
   , poAssetsDir = pure [absdir|/assets|]
   , poCssPath = pure $ [absdir|/assets|]</>[relfile|style.css|]
-  , poHomepageName = pure "index.kby"
   }

@@ -4,8 +4,8 @@ module Main where
 import qualified Data.Map as Map
 
 import Data.Text (Text)
+import Data.Char (toLower)
 import Data.Monoid
-import qualified Data.Text as T (pack)
 
 import qualified Toml
 
@@ -15,6 +15,7 @@ import System.CPUTime (getCPUTime)
 import System.Exit (die)
 import Text.Printf (printf)
 import Path
+import qualified  System.FilePath as SysPath
 import qualified Data.Text.IO as TIO
 
 import Builder
@@ -61,7 +62,11 @@ processCMD _ ["help"] = help
 processCMD opts ("build":arg:[]) = do
                             printf "Starting build of %s\n" arg
                             start <- getCPUTime
-                            parseRelDir arg >>= build opts
+                            let isKbyFile = (map toLower $ SysPath.takeExtension arg) == ".kby"
+                            if isKbyFile then 
+                                         parseSomeFile arg >>= build opts (oBuildDir opts)
+                            else
+                                         parseSomeDir arg >>= build opts (oBuildDir opts)
                             end <- getCPUTime
                             putChar '\n'
                             let time = fromIntegral (end-start) / (10^12)

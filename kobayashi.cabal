@@ -41,7 +41,9 @@ executable kobayashi
     other-extensions: TypeFamilies,
                       RecordWildCards,
                       DeriveGeneric,
-                      QuasiQuotes
+                      QuasiQuotes,
+                      FlexibleInstances,
+                      MultiParamTypeClasses
 
     build-depends:    base ^>=4.16.4.0,
                       megaparsec ^>=9.3.1,
