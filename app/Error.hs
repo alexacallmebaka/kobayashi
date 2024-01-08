@@ -3,7 +3,9 @@ module Error
   , ErrorMsg
   ) where
 
-type ErrorMsg = String
+import Data.Text
+
+type ErrorMsg = Text
 
 data BuildError = LexError { unError :: ErrorMsg }
                 | ParseError { unError :: ErrorMsg }

@@ -91,7 +91,7 @@ partialOptionsFromToml path = do
     Right (Config tomlOpts)  -> return . Right $ tomlOpts
     Left x -> return . Left $ x
 
-lastToEither :: String -> Last a -> Either String a
+lastToEither :: ErrorMsg -> Last a -> Either ErrorMsg a
 lastToEither errMsg (Last x) = maybe (Left errMsg) Right x
 
 makeOptions :: PartialOptions -> Either ErrorMsg Options

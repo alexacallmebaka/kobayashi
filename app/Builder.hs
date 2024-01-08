@@ -17,6 +17,7 @@ import Path
 import qualified System.FilePath as SysPath
 import System.Directory
 import Control.Monad (filterM)
+--import Control.Monad.Writer
 
 import Text.Megaparsec.Error
 
@@ -46,13 +47,13 @@ toHTML opts doc = "<!DOCTYPE HTML>\n" `append` motd `append` "<head>\n" `append`
 --lex a file and return a stream of tokens or an error as a string.
 lexFile :: SourceName -> Text -> Either BuildError KBYStream
 lexFile source input = case tokenize source input of
-        Left err -> Left . LexError $ errorBundlePretty err
+        Left err -> Left . LexError . pack $ errorBundlePretty err
         Right tokens -> Right tokens
 
 --parse a file and return a stream of tokens or an error as a string.
 parseFile :: SourceName -> KBYStream -> Either BuildError Document
 parseFile source input = case parseTokens source input of
-        Left err -> Left . ParseError $ errorBundlePretty err
+        Left err -> Left . ParseError . pack $ errorBundlePretty err
         Right doc -> Right doc
 
 -- kby => html. {{{1
@@ -84,10 +85,8 @@ getKbyFiles dir = do
 --2}}}
 
 
---maybe i make a "buildable" typeclass or something that i make the paths members of so that i can call just a "build" function
---that is polymorphic to dir or file if i am allowed to get rid of top level builds now
-
 class Buildable d s where
+  --build :: Options -> d -> s -> WriterT [ErrorMsg] IO () 
   build :: Options -> d -> s -> IO () 
 
 instance Buildable (Path Rel Dir) (SomeBase Dir) where
@@ -109,6 +108,7 @@ instance Buildable (Path Rel Dir) (Path b File) where
 --maybe i just return a list of unexecuted io actions and then execute everything with a sequebce
 --i can return either Err IO Text, then partition and report off of that?
 --maybe either Err (IO ())??
+--i think we use WriterT
 
 getFileDst :: Path b Dir -> Path Rel File -> IO (Path b File) --{{{2
 getFileDst dst file 
@@ -141,7 +141,7 @@ buildPage opts buildDir src = do
                       (LexError _) -> "lexical" :: String
                       (ParseError _) -> "syntactic" :: String
       printf "[ERROR] halting build of %s due to %s error:\n" srcString errType
-      putStr $ unError err
+      TIO.putStr $ unError err
     --Right page -> writeFile ( toFilePath $ dir </> [relfile|index.html|] ) page
     Right page -> TIO.writeFile (toFilePath dst) page
 --2}}}
