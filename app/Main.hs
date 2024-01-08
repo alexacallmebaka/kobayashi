@@ -3,7 +3,7 @@ module Main where
 -- imports {{{1
 import qualified Data.Map as Map
 
-import Data.Text (Text)
+import Data.Text (Text, justifyLeft, justifyRight)
 import Data.Char (toLower)
 import Data.Monoid
 
@@ -33,14 +33,17 @@ options = ["-odir", "-cfg"]
 --2}}}
 
 help :: IO () --{{{2
-help = mapM_ putStrLn [ "Usage: kobayashi [options] <command> \n"
-    ,"options"
-    , "============"
-    , "-odir /path/to/output/directory:\t specify an output directory for the html files."
-    , "-cfg /path/to/config.toml:\t TOML file to use for project configuration details."
-    ,"\ncommands"
-    , "============"
-    , "build /path/to/source/dir:\t build a directory of .kby files to html."
+help = mapM_ TIO.putStr [ "Usage: kobayashi [options] <command> \n\n"
+    ,"options\n"
+    , "============\n"
+    , justifyLeft 48 ' '"-odir /path/to/output/directory:"
+    , justifyRight 50  ' ' "specify an output directory for the html files.\n"
+    , justifyLeft 50 ' ' "-cfg /path/to/config.toml:"
+    , justifyRight 50  ' ' "TOML file to use for project configuration details.\n"
+    ,"\ncommands\n"
+    , "============\n"
+    , justifyLeft 50 ' ' "build /path/to/source/dir:"
+    , justifyRight 50  ' ' "build a directory of .kby files (or a single .kby file) to html.\n"
     ]
 --2}}}
 
