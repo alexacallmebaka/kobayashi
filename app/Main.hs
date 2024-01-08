@@ -19,8 +19,11 @@ import Path
 import qualified  System.FilePath as SysPath
 import qualified Data.Text.IO as TIO
 
+import Control.Monad.Writer (execWriterT)
+
 import Builder
 import Options
+import Error
 --1}}}
 
 --actions {{{1
@@ -65,14 +68,16 @@ processCMD opts ("build":arg:[]) = do
                             printf "Starting build of %s\n" arg
                             start <- getCPUTime
                             let isKbyFile = (map toLower $ SysPath.takeExtension arg) == ".kby"
-                            if isKbyFile then 
-                                         parseSomeFile arg >>= build opts (oBuildDir opts)
-                            else
-                                         parseSomeDir arg >>= build opts (oBuildDir opts)
+                            errs <- if isKbyFile then 
+                                         parseSomeFile arg >>= execWriterT . build opts (oBuildDir opts)
+                                    else
+                                         parseSomeDir arg >>= execWriterT . build opts (oBuildDir opts)
                             end <- getCPUTime
                             putChar '\n'
+                            printErrors errs
                             let time = fromIntegral (end-start) / (10^12)
-                              in printf "Finished in %0.4f sec.\n" (time :: Double)
+                                numErrs = length errs
+                              in printf "Finished in %0.4f sec with %d error(s).\n" (time :: Double) numErrs
 processCMD _ x = printf "[ERROR] Command with too many arguments: \"%s\". Perhaps options passed out of order?\n" $ intercalate " " x
 --2}}}
 

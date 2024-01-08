@@ -5,6 +5,7 @@
 --build website from DocuElem.
 module Builder
     ( build
+    , Builder
     ) where
 
 import Prelude hiding (concat)
@@ -17,7 +18,7 @@ import Path
 import qualified System.FilePath as SysPath
 import System.Directory
 import Control.Monad (filterM)
---import Control.Monad.Writer
+import Control.Monad.Writer
 
 import Text.Megaparsec.Error
 
@@ -29,7 +30,10 @@ import Parser
 import Options
 import Error
 
+--for Megaparsec
 type SourceName = String
+
+type Builder = WriterT [BuildError] IO
 
 motd :: Text
 motd = "<!--Made with <3 using Kobayashi: https://github.com/alexacallmebaka/kobayashi-->\n"
@@ -68,26 +72,9 @@ kbyToHtml opts source input =
 
 -- IO {{{1
 
-getChildren :: Path b Dir -> IO [Path b Dir] --{{{2
-getChildren dir = do
-  dirContents <- listDirectory (toFilePath dir)
-  children <- withCurrentDirectory (toFilePath dir) (filterM doesDirectoryExist dirContents)
-  typedChildren <- mapM parseRelDir children
-  return $ map ( \x -> dir </> x ) typedChildren
---2}}}
-
-getKbyFiles :: Path b Dir -> IO [Path b File] --{{{2
-getKbyFiles dir = do
-  dirContents <- listDirectory (toFilePath dir)
-  let kbyFiles = filter ( \x -> (map toLower $ SysPath.takeExtension x) == ".kby" ) dirContents
-  typedFileNames <- mapM parseRelFile kbyFiles
-  return $ map ( \x -> dir </> x ) typedFileNames
---2}}}
-
 
 class Buildable d s where
-  --build :: Options -> d -> s -> WriterT [ErrorMsg] IO () 
-  build :: Options -> d -> s -> IO () 
+  build :: Options -> d -> s -> Builder ()
 
 instance Buildable (Path Rel Dir) (SomeBase Dir) where
   build opts buildDir ( Abs dir ) = buildFldr opts buildDir dir
@@ -110,6 +97,22 @@ instance Buildable (Path Rel Dir) (Path b File) where
 --maybe either Err (IO ())??
 --i think we use WriterT
 
+getChildren :: Path b Dir -> IO [Path b Dir] --{{{2
+getChildren dir = do
+  dirContents <- listDirectory (toFilePath dir)
+  children <- withCurrentDirectory (toFilePath dir) (filterM doesDirectoryExist dirContents)
+  typedChildren <- mapM parseRelDir children
+  return $ map ( \x -> dir </> x ) typedChildren
+--2}}}
+
+getKbyFiles :: Path b Dir -> IO [Path b File] --{{{2
+getKbyFiles dir = do
+  dirContents <- listDirectory (toFilePath dir)
+  let kbyFiles = filter ( \x -> (map toLower $ SysPath.takeExtension x) == ".kby" ) dirContents
+  typedFileNames <- mapM parseRelFile kbyFiles
+  return $ map ( \x -> dir </> x ) typedFileNames
+--2}}}
+
 getFileDst :: Path b Dir -> Path Rel File -> IO (Path b File) --{{{2
 getFileDst dst file 
   | (map toLower . toFilePath . filename $ file) ==  "index.kby" = return $ dst </> [relfile|index.html|]
@@ -117,33 +120,28 @@ getFileDst dst file
 --2}}}
 
 --build a given directory.
-buildFldr :: Options -> Path Rel Dir -> Path b Dir -> IO () --{{{2
+buildFldr :: Options -> Path Rel Dir -> Path b Dir -> Builder () --{{{2
 buildFldr opts buildDir src = do
-  children <- getChildren src
-  files <- getKbyFiles src
+  children <- liftIO . getChildren $ src
+  files <- liftIO . getKbyFiles $ src
   mapM_ ( \x -> build opts ( buildDir </> (dirname x) ) x ) children
   mapM_ ( build opts buildDir ) files
 --2}}}
 
 --build a given kby file.
-buildPage :: Options -> Path Rel Dir -> Path b File -> IO () --{{{2
+buildPage :: Options -> Path Rel Dir -> Path b File -> Builder () --{{{2
 buildPage opts buildDir src = do
   let srcString = toFilePath src
-  (fileName,_) <- splitExtension $ filename src
-  folderName <- parseRelDir $ toFilePath fileName
-  dst <- getFileDst buildDir (filename src)
-  createDirectoryIfMissing True (toFilePath $ parent dst)
-  input <- TIO.readFile srcString
-  printf "Building %s...\n" srcString
+  input <- liftIO . TIO.readFile $ srcString
+  liftIO . printf "Building %s...\n" $ srcString
   case kbyToHtml opts srcString input of
-    Left err -> do
-      let errType = case err of
-                      (LexError _) -> "lexical" :: String
-                      (ParseError _) -> "syntactic" :: String
-      printf "[ERROR] halting build of %s due to %s error:\n" srcString errType
-      TIO.putStr $ unError err
-    --Right page -> writeFile ( toFilePath $ dir </> [relfile|index.html|] ) page
-    Right page -> TIO.writeFile (toFilePath dst) page
+    Left err -> tell [err]
+    Right page -> do
+          (fileName,_) <- liftIO . splitExtension . filename $ src
+          folderName <- liftIO . parseRelDir . toFilePath $ fileName
+          dst <- liftIO . getFileDst buildDir . filename $ src
+          liftIO . createDirectoryIfMissing True . toFilePath . parent $ dst
+          liftIO . TIO.writeFile (toFilePath dst) $ page
 --2}}}
 
 --1}}}
