@@ -7,12 +7,12 @@ module Builder
     ( build
     ) where
 
-import qualified Data.Text as T
+import Prelude hiding (concat)
 import qualified Data.Text.IO as TIO
+import Data.Text hiding (map, filter, concatMap, toLower)
 import Text.Printf (printf)
-import Data.List
-import Data.Char (toLower)
 import Data.Void
+import Data.Char (toLower)
 import Path
 import qualified System.FilePath as SysPath
 import System.Directory
@@ -30,20 +30,21 @@ import Error
 
 type SourceName = String
 
-motd :: String
+motd :: Text
 motd = "<!--Made with <3 using Kobayashi: https://github.com/alexacallmebaka/kobayashi-->\n"
 
-css :: Path Abs File -> String
-css path = "<link rel=\"stylesheet\" href=\"" ++ (toFilePath path) ++ "\">\n"
+css :: Path Abs File -> Text
+css path = "<link rel=\"stylesheet\" href=\"" `append` (pack . toFilePath $ path) `append` "\">\n"
 
 --htmlify internal Document.
-toHTML :: Options -> Document -> String --{{{1
-toHTML opts doc = "<!DOCTYPE HTML>\n" ++ motd ++ "<head>\n"++ ( css $ oCssPath opts ) ++ "</head>\n<html>\n<body>\n" ++  content ++ "</body>\n</html>\n"
-    where content = concatMap ( (++ "\n") . (htmlify opts) ) doc
+toHTML :: Options -> Document -> Text --{{{1
+toHTML opts doc = "<!DOCTYPE HTML>\n" `append` motd `append` "<head>\n" `append` ( css $ oCssPath opts )
+                  `append`  "</head>\n<html>\n<body>\n" `append`  content `append` "</body>\n</html>\n"
+    where content = concat $ map ( (`append` "\n") . (htmlify opts) ) doc
 --1}}}
 
 --lex a file and return a stream of tokens or an error as a string.
-lexFile :: SourceName -> T.Text -> Either BuildError KBYStream
+lexFile :: SourceName -> Text -> Either BuildError KBYStream
 lexFile source input = case tokenize source input of
         Left err -> Left . LexError $ errorBundlePretty err
         Right tokens -> Right tokens
@@ -55,7 +56,7 @@ parseFile source input = case parseTokens source input of
         Right doc -> Right doc
 
 -- kby => html. {{{1
-kbyToHtml :: Options -> SourceName -> T.Text -> Either BuildError String --{{{2
+kbyToHtml :: Options -> SourceName -> Text -> Either BuildError Text --{{{2
 kbyToHtml opts source input = 
     case (lexFile source input) >>= (parseFile source) of
         Right doc -> Right $ toHTML opts doc
@@ -142,7 +143,7 @@ buildPage opts buildDir src = do
       printf "[ERROR] halting build of %s due to %s error:\n" srcString errType
       putStr $ unError err
     --Right page -> writeFile ( toFilePath $ dir </> [relfile|index.html|] ) page
-    Right page -> writeFile (toFilePath dst) page
+    Right page -> TIO.writeFile (toFilePath dst) page
 --2}}}
 
 --1}}}

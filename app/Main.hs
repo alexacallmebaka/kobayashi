@@ -23,9 +23,6 @@ import Builder
 import Options
 --1}}}
 
---general todos:
---switch IO ops to text
-
 --actions {{{1
 
 options :: [String] --{{{2

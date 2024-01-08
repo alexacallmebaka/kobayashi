@@ -13,7 +13,7 @@ module HTML --{{{1
 
 import Data.HashSet as HS
 import Data.Hashable
-import qualified Data.Text as T
+import Data.Text hiding (foldl)
 import GHC.Generics (Generic)
 
 import Options
@@ -21,7 +21,7 @@ import Options
 --types {{{1
 --html tags
 
-type LinkSource = String
+type LinkSource = Text
 
 data Tag = Strong
          | Em
@@ -36,17 +36,17 @@ data Tag = Strong
 
 instance Hashable Tag
 
-instance Show Tag where
-    show Strong = "strong"
-    show Code = "code"
-    show Em = "em"
-    show H1 = "h1"
-    show H2 = "h2"
-    show UL = "ul"
-    show LI = "li"
-    show P = "p"
-    show Pre = "pre"
-    show (A _) = "a"
+textify :: Tag -> Text
+textify Strong = "strong"
+textify Code = "code"
+textify Em = "em"
+textify H1 = "h1"
+textify H2 = "h2"
+textify UL = "ul"
+textify LI = "li"
+textify P = "p"
+textify Pre = "pre"
+textify (A _) = "a"
 --1}}}
 
 --tags that take up thier own line.
@@ -57,25 +57,25 @@ isStandalone :: Tag -> Bool
 isStandalone x = HS.member x standaloneTags
 
 class HTML a where
-    htmlify :: Options -> a -> String
+    htmlify :: Options -> a -> Text
 
 --fold up a list of html elements into an HTML string.
-htmlFold :: (HTML a) => Options -> [a] -> String 
-htmlFold opts = foldl (\acc x -> acc ++ htmlify opts x) ""
+htmlFold :: (HTML a) => Options -> [a] -> Text
+htmlFold opts = foldl (\acc x -> acc `append` htmlify opts x) ""
 
 --generate start and end tag strings from a tag.
-genTags :: Tag -> (String, String)
+genTags :: Tag -> (Text, Text)
 genTags Pre  = ("<pre class=\"code\">\n", "</pre>")
 genTags UL  = ("<ul>\n", "</ul>")
 genTags LI  = ("<li>\n", "\n</li>\n")
 genTags (A src) = (start, "</a>")
-                where start = "<a href=\"" ++ src ++ "\">"
-genTags x = ("<" ++ tag ++ ">" ++ nline, nline ++ "</" ++ tag ++ ">")
-            where tag = show x
+                where start = "<a href=\"" `append` src `append` "\">"
+genTags x = ("<" `append` tag `append` ">" `append` nline, nline `append` "</" `append` tag `append` ">")
+            where tag = textify x
                   --certain tags should be formatted on their own line.
                   nline = if isStandalone x then "\n"  else ""
 
 --wrap a list of inner html in tags from outer html.
-wrap :: (HTML a) => Options -> [a] -> Tag -> String
-wrap opts inner tag = open ++ (htmlFold opts inner) ++ close
+wrap :: (HTML a) => Options -> [a] -> Tag -> Text
+wrap opts inner tag = open `append` (htmlFold opts inner) `append` close
                where (open, close) = genTags tag
