@@ -20,12 +20,13 @@ import System.Exit (die)
 import Builder (build, runBuilder)
 import Error (printErrors)
 
-import qualified Data.Map.Strict as Map (empty, findWithDefault, insert, Map)
-import qualified Data.Text.IO as TIO (putStr, putStrLn)
-import qualified System.FilePath as SysPath (takeExtension)
+import qualified Data.Map.Strict as Map
+import qualified Data.Text.IO as TIO 
+import qualified System.FilePath as SysPath
 
 import qualified Options
 --1}}}
+
 
 --list of command line option strings.
 options :: [String] --{{{1
@@ -110,10 +111,11 @@ main = do --{{{1
     let tomlPathString = Map.findWithDefault "kobayashi.toml" "-cfg" optMap
     hasToml <- doesFileExist tomlPathString
     
-    --print toml path if it exists, then build a partialOptions record.
-    --otherwise alert the user that a toml file was not found. and return an empty partialOptions.
-    --it is important to not that the toml not existing is not always an error. 
-    --the user may not want to use a toml file, so the default "kobayashi.toml" would not exist and it is okay.  
+    {- print toml path if it exists, then build a partialOptions record.
+    otherwise alert the user that a toml file was not found. and return an empty partialOptions.
+    it is important to not that the toml not existing is not always an error. 
+    the user may not want to use a toml file, so the default "kobayashi.toml" would not exist and it is okay.  
+    -}
     tomlOpts <- if hasToml 
                   then do
                     putStrLn $ "Using: " ++ tomlPathString ++ "\n"
