@@ -174,7 +174,7 @@ makeOptions PartialOptions {..} = do
   oBuildDir <- lastToEither "Missing build directory" poBuildDir
   oAssetsDir <- lastToEither "Missing assets directory" poAssetsDir
   oCssPath <- lastToEither "Missing path to Css." poCssPath
-  return Options {..}
+  pure Options {..}
 --2}}}
 
 defaultPartialOptions :: PartialOptions --{{{2

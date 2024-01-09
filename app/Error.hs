@@ -28,7 +28,7 @@ data BuildError --{{{2
 --1}}}
 
 printErrors :: [BuildError] -> IO () --{{{1
-printErrors [] = return ()
+printErrors [] = pure ()
 printErrors (err:errs) = do
   let errType = case err of  
                   LexError _ -> "[LEXICAL ERROR]"
