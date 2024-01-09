@@ -8,7 +8,7 @@ module Options
   , makeOptions
   , defaultPartialOptions
   , configCodec      
-  , partialOptionsFromFlags
+  , partialOptionsFromOptMap
   , partialOptionsFromToml
   ) where
 
@@ -79,10 +79,10 @@ partialOptionsCodec = PartialOptions
   <*> Toml.last ( Toml.textBy pathToText textToAbsDir ) "assets_dir" .= poAssetsDir
   <*> Toml.last ( Toml.textBy pathToText textToAbsFile ) "css_path" .= poCssPath
 
---create a PartialOptions object from a map of parsed flags. 
-partialOptionsFromFlags :: Map.Map String String -> PartialOptions
-partialOptionsFromFlags flags = mempty
-  { poBuildDir = Last $ ( Map.lookup "-odir" flags >>= parseRelDir ) }
+--create a PartialOptions object from a map of parsed command line options. 
+partialOptionsFromOptMap :: Map.Map String String -> PartialOptions
+partialOptionsFromOptMap optMap = mempty
+  { poBuildDir = Last $ ( Map.lookup "-odir" optMap >>= parseRelDir ) }
 
 partialOptionsFromToml :: SysPath.FilePath -> IO (Either [TomlDecodeError] PartialOptions)
 partialOptionsFromToml path = do
