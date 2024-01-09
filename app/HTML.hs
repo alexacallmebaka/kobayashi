@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 --a module for HTML typeclass and related functions.
 
@@ -15,6 +16,8 @@ import Data.HashSet as HS
 import Data.Hashable
 import Data.Text hiding (foldl)
 import GHC.Generics (Generic)
+import Control.Monad
+import Control.Monad.Reader
 
 import Options
 
@@ -57,11 +60,13 @@ isStandalone :: Tag -> Bool
 isStandalone x = HS.member x standaloneTags
 
 class HTML a where
-    htmlify :: Options -> a -> Text
+    htmlify :: (MonadReader Options r ) => a -> r Text
 
 --fold up a list of html elements into an HTML string.
-htmlFold :: (HTML a) => Options -> [a] -> Text
-htmlFold opts = foldl (\acc x -> acc `append` htmlify opts x) ""
+htmlFold :: (HTML a, MonadReader Options r) => [a] -> r Text
+htmlFold = foldM (\acc x -> do
+                        c <- htmlify x
+                        return $ acc `append` c) ""
 
 --generate start and end tag strings from a tag.
 genTags :: Tag -> (Text, Text)
@@ -76,6 +81,8 @@ genTags x = ("<" `append` tag `append` ">" `append` nline, nline `append` "</" `
                   nline = if isStandalone x then "\n"  else ""
 
 --wrap a list of inner html in tags from outer html.
-wrap :: (HTML a) => Options -> [a] -> Tag -> Text
-wrap opts inner tag = open `append` (htmlFold opts inner) `append` close
-               where (open, close) = genTags tag
+wrap :: (HTML a, MonadReader Options r) => [a] -> Tag -> r Text
+wrap inner tag = do
+              let (open, close) = genTags tag   
+              content <- (htmlFold inner) 
+              return $ open `append` content `append` close

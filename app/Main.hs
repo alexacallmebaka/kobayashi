@@ -69,9 +69,9 @@ processCMD opts ("build":arg:[]) = do
                             start <- getCPUTime
                             let isKbyFile = (map toLower $ SysPath.takeExtension arg) == ".kby"
                             errs <- if isKbyFile then 
-                                         parseSomeFile arg >>= execWriterT . build opts (oBuildDir opts)
+                                         parseSomeFile arg >>= runBuilder opts . build (oBuildDir opts)
                                     else
-                                         parseSomeDir arg >>= execWriterT . build opts (oBuildDir opts)
+                                         parseSomeDir arg >>= runBuilder opts . build (oBuildDir opts)
                             end <- getCPUTime
                             putChar '\n'
                             printErrors errs

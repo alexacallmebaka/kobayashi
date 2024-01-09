@@ -1,11 +1,13 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 --build website from DocuElem.
 module Builder
     ( build
     , Builder
+    , runBuilder
     ) where
 
 import Prelude hiding (concat)
@@ -19,6 +21,7 @@ import qualified System.FilePath as SysPath
 import System.Directory
 import Control.Monad (filterM)
 import Control.Monad.Writer
+import Control.Monad.Reader
 
 import Text.Megaparsec.Error
 
@@ -33,7 +36,10 @@ import Error
 --for Megaparsec
 type SourceName = String
 
-type Builder = WriterT [BuildError] IO
+type Builder = WriterT [BuildError] (ReaderT Options IO)
+
+runBuilder :: Options -> Builder a -> IO [BuildError]
+runBuilder opts b = runReaderT ( execWriterT b ) opts
 
 motd :: Text
 motd = "<!--Made with <3 using Kobayashi: https://github.com/alexacallmebaka/kobayashi-->\n"
@@ -42,10 +48,15 @@ css :: Path Abs File -> Text
 css path = "<link rel=\"stylesheet\" href=\"" `append` (pack . toFilePath $ path) `append` "\">\n"
 
 --htmlify internal Document.
-toHTML :: Options -> Document -> Text --{{{1
-toHTML opts doc = "<!DOCTYPE HTML>\n" `append` motd `append` "<head>\n" `append` ( css $ oCssPath opts )
+toHtml :: (MonadReader Options r) => Document -> r Text --{{{1
+toHtml doc = do 
+        opts <- ask 
+        html <- mapM ( \x -> do 
+          html <- htmlify x
+          return $ html `append` "\n" ) doc
+        content <- return $ concat html
+        return $ "<!DOCTYPE HTML>\n" `append` motd `append` "<head>\n" `append` ( css $ oCssPath opts )
                   `append`  "</head>\n<html>\n<body>\n" `append`  content `append` "</body>\n</html>\n"
-    where content = concat $ map ( (`append` "\n") . (htmlify opts) ) doc
 --1}}}
 
 --lex a file and return a stream of tokens or an error as a string.
@@ -61,11 +72,11 @@ parseFile source input = case parseTokens source input of
         Right doc -> Right doc
 
 -- kby => html. {{{1
-kbyToHtml :: Options -> SourceName -> Text -> Either BuildError Text --{{{2
-kbyToHtml opts source input = 
+kbyToHtml :: (MonadReader Options r) => SourceName -> Text -> r (Either BuildError Text) --{{{2
+kbyToHtml source input = 
     case (lexFile source input) >>= (parseFile source) of
-        Right doc -> Right $ toHTML opts doc
-        Left x -> Left x
+      Right doc -> toHtml doc >>= return . Right
+      Left x -> return . Left $ x
 --2}}}
 
 --1}}}
@@ -74,28 +85,21 @@ kbyToHtml opts source input =
 
 
 class Buildable d s where
-  build :: Options -> d -> s -> Builder ()
+  build :: d -> s -> Builder ()
 
 instance Buildable (Path Rel Dir) (SomeBase Dir) where
-  build opts buildDir ( Abs dir ) = buildFldr opts buildDir dir
-  build opts buildDir ( Rel dir ) = buildFldr opts buildDir dir
+  build buildDir ( Abs dir ) = buildFldr buildDir dir
+  build buildDir ( Rel dir ) = buildFldr buildDir dir
 
 instance Buildable (Path Rel Dir) (SomeBase File) where
-  build opts buildDir ( Abs file ) = buildPage opts buildDir file
-  build opts buildDir ( Rel file ) = buildPage opts buildDir file
+  build buildDir ( Abs file ) = buildPage buildDir file
+  build buildDir ( Rel file ) = buildPage buildDir file
 
 instance Buildable (Path Rel Dir) (Path b Dir) where
-  build opts buildDir dir = buildFldr opts buildDir dir
+  build buildDir dir = buildFldr buildDir dir
 
 instance Buildable (Path Rel Dir) (Path b File) where
-  build opts buildDir file = buildPage opts buildDir file
-
---TODO: print to stderr, gather and report errors at some point??
---maybe gather errors in list or something as we go along and print a summary of errors/not at end??
---maybe i just return a list of unexecuted io actions and then execute everything with a sequebce
---i can return either Err IO Text, then partition and report off of that?
---maybe either Err (IO ())??
---i think we use WriterT
+  build buildDir file = buildPage buildDir file
 
 getChildren :: Path b Dir -> IO [Path b Dir] --{{{2
 getChildren dir = do
@@ -120,21 +124,23 @@ getFileDst dst file
 --2}}}
 
 --build a given directory.
-buildFldr :: Options -> Path Rel Dir -> Path b Dir -> Builder () --{{{2
-buildFldr opts buildDir src = do
+buildFldr :: Path Rel Dir -> Path b Dir -> Builder () --{{{2
+buildFldr buildDir src = do
   children <- liftIO . getChildren $ src
   files <- liftIO . getKbyFiles $ src
-  mapM_ ( \x -> build opts ( buildDir </> (dirname x) ) x ) children
-  mapM_ ( build opts buildDir ) files
+  mapM_ ( \x -> build ( buildDir </> (dirname x) ) x ) children
+  mapM_ ( build buildDir ) files
 --2}}}
 
 --build a given kby file.
-buildPage :: Options -> Path Rel Dir -> Path b File -> Builder () --{{{2
-buildPage opts buildDir src = do
+buildPage :: Path Rel Dir -> Path b File -> Builder () --{{{2
+buildPage buildDir src = do
+  opts <- ask
   let srcString = toFilePath src
   input <- liftIO . TIO.readFile $ srcString
   liftIO . printf "Building %s...\n" $ srcString
-  case kbyToHtml opts srcString input of
+  result <- lift . kbyToHtml srcString $ input
+  case result of
     Left err -> tell [err]
     Right page -> do
           (fileName,_) <- liftIO . splitExtension . filename $ src
