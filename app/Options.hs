@@ -4,6 +4,8 @@ read more about this pattern: https://medium.com/@jonathangfischoff/the-partial-
 
 --pragmas {{{1
 {-# LANGUAGE RecordWildCards #-}
+
+--so we can use quasiquoters from Path module
 {-# LANGUAGE QuasiQuotes #-}
 --1}}}
 
