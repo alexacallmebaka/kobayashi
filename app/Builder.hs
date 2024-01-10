@@ -1,3 +1,7 @@
+{-combines all modules of kobayashi for a full kby => html pipeline.
+also handles creation of files and directories during build.
+-}
+
 --pragmas {{{1
 
 --used to partially apply the MonadReader constraint to only types with "Options" as the environment type.
@@ -84,7 +88,7 @@ runBuilder opts b = runReaderT ( execWriterT b ) opts
 
 --1}}}
 
---backend helper functions {{{1
+--IO helper functions {{{1
 
 --get all children of a given directory.
 getChildren :: Path b Dir -> IO [Path b Dir] --{{{2
