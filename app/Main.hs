@@ -1,8 +1,10 @@
 --main program entrypoint.
-module Main
+
+module Main --{{{1
   (
    main
   ) where
+--1}}}
 
 -- imports {{{1
 import Control.Monad.Writer (execWriterT)
