@@ -52,7 +52,7 @@ data InlineElem = Bold [InlineElem]
 
 --how to turn IR to html. {{{1
 
-$instance Html Document where --{{{2
+instance Html Document where --{{{2
   htmlify (Document elems) = do
       opts <- ask 
       --for each block element in document, turn it to html and append a newline. after that, combine list into one Text.
