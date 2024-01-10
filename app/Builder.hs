@@ -34,14 +34,14 @@ import Control.Monad.Reader (ask, MonadReader, ReaderT, runReaderT)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer (execWriterT, tell, WriterT)
 import Data.Char (toLower)
-import Data.Text (Text, pack, append)
-import Path (Abs, Dir, File, Path, Rel, relfile, SomeBase (..), (</>))
+import Data.Text (Text, append)
+import Path (Dir, File, Path, Rel, relfile, SomeBase (..), (</>))
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist, listDirectory, withCurrentDirectory)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Text.Printf (printf)
 
 import Error (BuildError(..))
-import Html (htmlify)
+import Html (htmlify, includeCss, motd)
 import Document (Document)
 import Token (TokenStream)
 import Lexer (lexFile)
@@ -135,24 +135,16 @@ getFileDst dst file
 
 --functions to generate html-encoded text. {{{1
 
---comments to add some flair.
-motd :: Text --{{{2
-motd = "<!--Made with <3 using Kobayashi: https://github.com/alexacallmebaka/kobayashi-->\n"
---2}}}
-
---given a path, generate an html link to css.
-css :: Path Abs File -> Text --{{{2
-css path = "<link rel=\"stylesheet\" href=\"" `append` (pack . Path.toFilePath $ path) `append` "\">\n"
---2}}}
 
 --convert the kbydoc ir to html-encoded text.
-toHtml :: (MonadReader Options r) => Document -> r Text --{{{2
-toHtml doc = do 
+iRtoHtml :: (MonadReader Options r) => Document -> r Text --{{{2
+iRtoHtml doc = do 
         opts <- ask 
         --for each block element in doc, turn it to html and append a newline. after that, combine list into one Text.
         content <- forM doc (\x -> htmlify x >>= pure . append "\n") >>= pure . Text.concat
+        css <- includeCss
         --combine everything for our final html page.
-        pure $ "<!DOCTYPE HTML>\n" `append` motd `append` "<head>\n" `append` ( css $ oCssPath opts )
+        pure $ "<!DOCTYPE HTML>\n" `append` motd `append` "<head>\n" `append` css
                   `append`  "</head>\n<html>\n<body>\n" `append`  content `append` "</body>\n</html>\n"
 --2}}}
 
@@ -160,7 +152,7 @@ toHtml doc = do
 kbyToHtml :: (MonadReader Options r) => String -> Text -> r (Either BuildError Text) --{{{2
 kbyToHtml sourceFileName input = 
     case (lexFile sourceFileName input) >>= (parseFile sourceFileName) of
-      Right doc -> toHtml doc >>= pure . Right
+      Right doc -> iRtoHtml doc >>= pure . Right
       Left x -> pure . Left $ x
 --2}}}
 
