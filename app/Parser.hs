@@ -42,7 +42,7 @@ instance Hashable InlineID
 
 --parse a nonempty file.
 file :: Parser KD.Document
-file = some blockElem <* eof
+file = KD.Document <$> some blockElem <* eof
 
 blockElem :: Parser KD.BlockElem
 blockElem = choice [ paragraph

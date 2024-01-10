@@ -12,19 +12,21 @@ module Document
 --1}}}
 
 --imports {{{1
+import Control.Monad (forM)
 import Control.Monad.Reader (MonadReader, ask)
 import Data.Text (append, pack, Text, unpack)
 import Path (toFilePath)
 
-import Html (Html, htmlify, Tag(..), wrap)
+import Html (Html, htmlify, includeCss, motd, Tag(..), wrap)
 import Options (Options(..))
 
+import qualified Data.Text as Text
 import qualified System.FilePath as SysPath
 --1}}}
 
 
 --types {{{1
-type Document = [BlockElem]
+newtype Document = Document { unDocument :: [BlockElem] }
 
 data Url = RemoteRef { refSrc :: Text }
          | PageRef { refSrc :: Text }
@@ -49,6 +51,23 @@ data InlineElem = Bold [InlineElem]
 --1}}}
 
 --how to turn IR to html. {{{1
+instance Html Document where
+  htmlify (Document elems) = do
+      opts <- ask 
+      --for each block element in document, turn it to html and append a newline. after that, combine list into one Text.
+      content <- forM elems (\x -> htmlify x >>= pure . append "\n") >>= pure . Text.concat
+      css <- includeCss
+      --combine everything for our final html page.
+      pure
+        $ "<!DOCTYPE HTML>\n" 
+        `append` motd 
+        `append` "<head>\n" 
+        `append` css
+        `append`  "</head>\n<html>\n<body>\n" 
+        `append`  content 
+        `append` "</body>\n</html>\n"
+
+
 instance Html BlockElem where 
     htmlify (Header inner) = wrap inner H1
     htmlify (Subheader inner) = wrap inner H2

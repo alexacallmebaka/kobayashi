@@ -28,7 +28,7 @@ module Builder
 --1}}}
 
 --imports {{{1
-import Control.Monad (filterM, forM, forM_)
+import Control.Monad (filterM, forM_)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (ask, MonadReader, ReaderT, runReaderT)
 import Control.Monad.Trans.Class (lift)
@@ -41,8 +41,8 @@ import Text.Megaparsec.Error (errorBundlePretty)
 import Text.Printf (printf)
 
 import Error (BuildError(..))
-import Html (htmlify, includeCss, motd)
-import Document (Document)
+import Html (htmlify)
+import Document (Document(..))
 import Token (TokenStream)
 import Lexer (lexFile)
 import Options (Options(..))
@@ -50,7 +50,6 @@ import Parser (parseFile)
 
 import qualified Path
 import qualified Data.Text.IO as TIO
-import qualified Data.Text as Text
 import qualified System.FilePath as SysPath
 --1}}}
 
@@ -133,29 +132,12 @@ getFileDst dst file
 
 --1}}}
 
---functions to generate html-encoded text. {{{1
-
-
---convert the kbydoc ir to html-encoded text.
-iRtoHtml :: (MonadReader Options r) => Document -> r Text --{{{2
-iRtoHtml doc = do 
-        opts <- ask 
-        --for each block element in doc, turn it to html and append a newline. after that, combine list into one Text.
-        content <- forM doc (\x -> htmlify x >>= pure . append "\n") >>= pure . Text.concat
-        css <- includeCss
-        --combine everything for our final html page.
-        pure $ "<!DOCTYPE HTML>\n" `append` motd `append` "<head>\n" `append` css
-                  `append`  "</head>\n<html>\n<body>\n" `append`  content `append` "</body>\n</html>\n"
---2}}}
-
 --convert kby-encoded text to html-encoded text.
-kbyToHtml :: (MonadReader Options r) => String -> Text -> r (Either BuildError Text) --{{{2
+kbyToHtml :: (MonadReader Options r) => String -> Text -> r (Either BuildError Text) --{{{1
 kbyToHtml sourceFileName input = 
     case (lexFile sourceFileName input) >>= (parseFile sourceFileName) of
-      Right doc -> iRtoHtml doc >>= pure . Right
+      Right doc -> htmlify doc >>= pure . Right
       Left x -> pure . Left $ x
---2}}}
-
 --1}}}
 
 --build directory and individual files. {{{1
