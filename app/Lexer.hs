@@ -4,7 +4,7 @@ module Lexer (
     ) where
 
 --imports {{{1
-import KBYToken
+import Token
 import KBYDoc (Document)
 
 import qualified Data.Text as T
@@ -13,7 +13,7 @@ import Data.Void
 
 import Control.Applicative hiding (some, many)
 
-import Text.Megaparsec
+import Text.Megaparsec hiding (Token)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Debug
 
@@ -22,29 +22,29 @@ import Error (BuildError(..))
 
 type Parser = Parsec Void T.Text
 
-file :: Parser KBYStream
+file :: Parser TokenStream
 -- <* eof to ensure we fail if we havent reached the end of the file yet.
 -- you cant consume eof, so as long as we are at the end this parser will succeed.
-file = KBYStream . concat <$> (some (choice [psuedoBlock, block]) <* eof)
+file = TokenStream . concat <$> (some (choice [psuedoBlock, block]) <* eof)
 
 -- block stuff {{{1
 
-block :: Parser [KBYWithInfo]
+block :: Parser [RichToken]
 block = choice [ unorderedList
                , codeListing
                , paragraph ]
 
-paragraph :: Parser [KBYWithInfo]
+paragraph :: Parser [RichToken]
 paragraph = do 
     (contents, eob) <- someTill_ inline (try endOfBlock)
     return $ (concat contents) ++ [eob]
 
-unorderedList :: Parser [KBYWithInfo]
+unorderedList :: Parser [RichToken]
 unorderedList = do
     (contents, eob) <- someTill_ unorderedListItem (try unorderedListEnd)
     return $ (concat contents) ++ [eob]
 
-unorderedListItem :: Parser [KBYWithInfo]
+unorderedListItem :: Parser [RichToken]
 unorderedListItem =  do
   bullet <- basicInline '-' UnorderedListItem
   space
@@ -52,14 +52,14 @@ unorderedListItem =  do
   return $ [bullet] ++ (concat contents)
 
 --cannot use the standard endOfBlock parser here since the unorderedListItem "eats" the first newline.
-unorderedListEnd :: Parser KBYWithInfo
+unorderedListEnd :: Parser RichToken
 unorderedListEnd = do
     startPos <- getSourcePos
     (() <$ eol) <|> eof
     let txt = "\\n\\n"
-    return $ KBYWithInfo startPos txt EndOfBlock
+    return $ RichToken startPos txt EndOfBlock
 
-codeListing :: Parser [KBYWithInfo]
+codeListing :: Parser [RichToken]
 codeListing = do
   start <- listingMarker BeginCodeListing
   eol
@@ -68,31 +68,31 @@ codeListing = do
   return $ [start] ++ contents ++ [end] ++ [eob]
 
   
-listingMarker :: KBYToken -> Parser KBYWithInfo
+listingMarker :: Token -> Parser RichToken
 listingMarker beginOrEnd = do
     startPos <- getSourcePos
     string "```"
-    return $ KBYWithInfo startPos "```" beginOrEnd
+    return $ RichToken startPos "```" beginOrEnd
 
 
 --elements that act as block elements but functionally take up one line.
-psuedoBlock :: Parser [KBYWithInfo]
+psuedoBlock :: Parser [RichToken]
 psuedoBlock = choice [ psuedoBlockWithPrefix 
                      , image ]
 
-psuedoBlockWithPrefix :: Parser [KBYWithInfo]
+psuedoBlockWithPrefix :: Parser [RichToken]
 psuedoBlockWithPrefix = do
     prefix <- psuedoBlockPrefix
     (contents, eob) <- someTill_ inline (try endOfBlock)
     return $ [prefix] ++ (concat contents) ++ [eob]
 
-psuedoBlockPrefix :: Parser KBYWithInfo
+psuedoBlockPrefix :: Parser RichToken
 psuedoBlockPrefix = choice
     [ headerPrefix <?> "header or subheader"]
 
 --headers {{{2
 
-headerPrefix :: Parser KBYWithInfo
+headerPrefix :: Parser RichToken
 headerPrefix = do
     startPos <- getSourcePos
     char '@'
@@ -100,11 +100,11 @@ headerPrefix = do
     let txt = case tok of
                BeginHeader -> "@"
                BeginSubheader -> "@@"
-    return $ KBYWithInfo startPos txt tok
+    return $ RichToken startPos txt tok
     
 --2}}}
 
-image :: Parser [KBYWithInfo]
+image :: Parser [RichToken]
 image = do
   start <- basicInline '<' BeginImg
   maybeAssetRef <- optional $ basicInline '$' AssetRef
@@ -120,26 +120,26 @@ image = do
 
 --either a link or a single rich text car, we use singleton lists so types match up.
 --links are lexed separately to avoid reading in / as italic in the link source.
-inline :: Parser [KBYWithInfo]
+inline :: Parser [RichToken]
 inline = try link <|> (richTextChar >>= (\x -> return $ x:[]))
 
-richTextChar :: Parser KBYWithInfo
+richTextChar :: Parser RichToken
 richTextChar = choice
     [ basicInline '*' Bold <?> "bold"
     , basicInline '/' Italic <?> "italic"
     , basicInline '`' Verb <?> "inline verbatim"
     , textChar <?> "printable unicode char"]
 
-basicInline :: Char -> KBYToken -> Parser KBYWithInfo
+basicInline :: Char -> Token -> Parser RichToken
 basicInline tokChar tok = do 
     startPos <- getSourcePos
     txt <- char tokChar
-    return $ KBYWithInfo startPos (T.singleton txt) tok
+    return $ RichToken startPos (T.singleton txt) tok
 
-pageOrAssetRef :: Parser KBYWithInfo
+pageOrAssetRef :: Parser RichToken
 pageOrAssetRef = basicInline '%' PageRef <|> basicInline '$' AssetRef
 
-link :: Parser [KBYWithInfo]
+link :: Parser [RichToken]
 link = do
     start <- basicInline '[' LinkStart
     --fail if early link end char.
@@ -150,27 +150,27 @@ link = do
       (Just refType) -> return $ [start] ++ title ++ [linkSep] ++ [refType] ++ href ++ [end]
       Nothing -> return $ [start] ++ title ++ [linkSep] ++ href ++ [end]
 
-textChar :: Parser KBYWithInfo
+textChar :: Parser RichToken
 textChar = do 
     startPos <- getSourcePos
     option '\00' (char '\\')
     txt <- printChar <|> newline
-    return $ KBYWithInfo startPos (T.singleton txt) TextChar
+    return $ RichToken startPos (T.singleton txt) TextChar
 --1}}}
 
-endOfBlock :: Parser KBYWithInfo
+endOfBlock :: Parser RichToken
 endOfBlock = do
     startPos <- getSourcePos
     eol
     (() <$ eol) <|> eof
     let txt = "\\n\\n"
-    return $ KBYWithInfo startPos txt EndOfBlock
+    return $ RichToken startPos txt EndOfBlock
 
 
-tokenize :: String -> T.Text -> Either (ParseErrorBundle T.Text Void) KBYStream 
+tokenize :: String -> T.Text -> Either (ParseErrorBundle T.Text Void) TokenStream 
 tokenize = runParser file
 
-lexFile :: String -> T.Text -> Either BuildError KBYStream --{{{2
+lexFile :: String -> T.Text -> Either BuildError TokenStream --{{{2
 lexFile source input = case tokenize source input of
         Left err -> Left . LexError . T.pack $ errorBundlePretty err
         Right tokens -> Right tokens

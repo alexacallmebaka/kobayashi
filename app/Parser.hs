@@ -7,7 +7,7 @@ module Parser (
         ) where
 
 --imports {{{1
-import Text.Megaparsec
+import Text.Megaparsec hiding (Token)
 import Data.Void
 import Data.HashMap.Strict as HM
 import qualified Data.Set as Set
@@ -15,7 +15,7 @@ import qualified Data.Text as T
 import Data.Hashable
 import GHC.Generics (Generic)
 
-import qualified KBYToken as KT
+import qualified Token as KT
 import qualified KBYDoc as KD
 import Error (BuildError(..))
 --1}}}
@@ -23,7 +23,7 @@ import Error (BuildError(..))
 --types {{{1
 
 --type alias to make signatures nicer.
-type Parser = Parsec Void KT.KBYStream
+type Parser = Parsec Void KT.TokenStream
 
 --these types are keys used in a hashmap to identify parsers for different types of
 --inline tokens. for details on why we derive generic, see here:
@@ -85,7 +85,7 @@ unorderedListItem = do
 --generic parser for blocks that begin with a single token and are ended by an
 --EndOfBlock token.
 
-oneTokenBlock :: KT.KBYToken
+oneTokenBlock :: KT.Token
 --               ^^ token to begin block
               -> ([KD.InlineElem] -> KD.BlockElem) 
 --              ^^ type constructor that takes a list of inlines and returns a block.
@@ -115,9 +115,9 @@ endOfBlock = (() <$ basicToken KT.EndOfBlock) <|> eof
 --want to pass to the error messages.
 --see the docs on token: https://hackage.haskell.org/package/megaparsec-9.4.1/docs/Text-Megaparsec.html#v:token
 
-basicToken :: KT.KBYToken -> Parser KT.KBYToken
+basicToken :: KT.Token -> Parser KT.Token
 basicToken tok = token test Set.empty
-    where test ( KT.KBYWithInfo _ _ t ) = if t == tok then Just t else Nothing
+    where test ( KT.RichToken _ _ t ) = if t == tok then Just t else Nothing
 
 link :: Parser KD.InlineElem
 link = do
@@ -142,7 +142,7 @@ linkSource = do
 --parse a plaintext character
 textChar :: Parser T.Text
 textChar = token test Set.empty
-    where test ( KT.KBYWithInfo _ c KT.TextChar) = Just c
+    where test ( KT.RichToken _ c KT.TextChar) = Just c
           test _ = Nothing
 
 plainText :: Parser KD.InlineElem
@@ -169,10 +169,10 @@ basicInlineElem elems = choice elems
 wrapsText :: ([KD.InlineElem] -> KD.InlineElem) 
 --          ^^ type constructor for element that is the "wrapper" of the other elements.
 --          e.g. in "*word*" KD.Bold is the wrapper.
-          -> KT.KBYToken 
+          -> KT.Token 
 --          ^^the token to parse for the wrapper start and end.
           -> InlineID 
---          ^^the key in the hashmap that identifies the  parser for the KT.KBYToken passed.
+--          ^^the key in the hashmap that identifies the  parser for the KT.Token passed.
           -> Parser KD.InlineElem
 
 wrapsText wrapper tok obj = wrapper <$> between wrap wrap (some $ choice valid)
@@ -185,10 +185,10 @@ inlineElem = choice [basicInlineElem basicInlineChoices, link]
 
  --1}}}
 
-parseTokens :: String -> KT.KBYStream -> Either (ParseErrorBundle KT.KBYStream Void) KD.Document
+parseTokens :: String -> KT.TokenStream -> Either (ParseErrorBundle KT.TokenStream Void) KD.Document
 parseTokens = runParser file
 
-parseFile :: String -> KT.KBYStream -> Either BuildError KD.Document --{{{2
+parseFile :: String -> KT.TokenStream -> Either BuildError KD.Document --{{{2
 parseFile source input = case parseTokens source input of
         Left err -> Left . ParseError . T.pack $ errorBundlePretty err
         Right doc -> Right doc

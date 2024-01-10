@@ -6,10 +6,10 @@
 --1}}}
 
 --exports {{{1
-module KBYToken
-    ( KBYToken(..)
-    , KBYWithInfo(..)
-    , KBYStream(..)
+module Token
+    ( Token(..)
+    , RichToken(..)
+    , TokenStream(..)
     ) where
 --1}}}
 
@@ -19,13 +19,13 @@ import qualified Data.List.NonEmpty as NE
 import Data.Proxy (Proxy(..))
 import Data.List
 
-import Text.Megaparsec
+import Text.Megaparsec hiding (Token)
 import Text.Megaparsec.Pos
-import Text.Megaparsec.Stream
+import qualified Text.Megaparsec.Stream
 --1}}}
 
 --types {{{1
-data KBYToken = BeginHeader
+data Token = BeginHeader
               | BeginSubheader
               | UnorderedListItem
               | BeginImg
@@ -45,14 +45,14 @@ data KBYToken = BeginHeader
               deriving (Eq, Show, Ord)
 
 --a token with a starting position and text representation.
-data KBYWithInfo = KBYWithInfo
+data RichToken = RichToken
     { startPos :: SourcePos
     , asTxt :: T.Text
-    , innerToken :: KBYToken
+    , innerToken :: Token
     } deriving (Eq, Show, Ord)
 
 --a token stream
-newtype KBYStream = KBYStream { unStream :: [KBYWithInfo] } deriving (Eq, Show)
+newtype TokenStream = TokenStream { unStream :: [RichToken] } deriving (Eq, Show)
 --1}}}
 
 --megaparsec stream instances {{{1
@@ -62,9 +62,9 @@ newtype KBYStream = KBYStream { unStream :: [KBYWithInfo] } deriving (Eq, Show)
 --see: https://hackage.haskell.org/package/megaparsec-9.4.1/docs/Text-Megaparsec-Stream.html#t:Stream
 --and: https://markkarpov.com/tutorial/megaparsec.html#working-with-custom-input-streams
 
-instance Stream KBYStream where 
-    type Token KBYStream = KBYWithInfo
-    type Tokens KBYStream = [KBYWithInfo]
+instance Stream TokenStream where 
+    type Token TokenStream = RichToken
+    type Tokens TokenStream = [RichToken]
 
     tokensToChunk Proxy = id
     chunkToTokens Proxy = id
@@ -72,25 +72,25 @@ instance Stream KBYStream where
     chunkEmpty Proxy = null
     take1_ s = do
         taken <- uncons . unStream $ s
-        rest <- return $ KBYStream . snd $ taken
+        rest <- return $ TokenStream . snd $ taken
         return (fst taken, rest)
 
-    takeN_ _ (KBYStream []) = Nothing
+    takeN_ _ (TokenStream []) = Nothing
     takeN_ x s 
         | x <= 0 = Just ([], s)
         | otherwise = do 
             let taken = splitAt x $ unStream s
-            rest <- return $ KBYStream . snd $ taken
+            rest <- return $ TokenStream . snd $ taken
             return (fst taken, rest)
 
-    takeWhile_ pred s = (fst pair, KBYStream . snd $ pair)
+    takeWhile_ pred s = (fst pair, TokenStream . snd $ pair)
         where pair = span pred $ unStream s
 --2}}}
 
 --stream that can be printed {{{2
 --see: https://hackage.haskell.org/package/megaparsec-9.4.1/docs/Text-Megaparsec-Stream.html#t:VisualStream
 
-instance VisualStream KBYStream where
+instance VisualStream TokenStream where
     showTokens Proxy = foldl (\acc x -> acc ++ (T.unpack . asTxt $ x)) ""
     tokensLength Proxy = foldl (\acc x -> acc + (T.length . asTxt $ x)) 0 
 --2}}}
@@ -98,11 +98,11 @@ instance VisualStream KBYStream where
 --stream with some useful stuff for error messages {{{2
 --see: https://hackage.haskell.org/package/megaparsec-9.4.1/docs/Text-Megaparsec-Stream.html#t:TraversableStream
 
-instance TraversableStream KBYStream where
+instance TraversableStream TokenStream where
     --this is not very well documented, so I am just trying something and seeing how it breaks lol
     reachOffset offset PosState {..} = ((Just line)
                                        , PosState
-                                            { pstateInput = KBYStream post
+                                         { pstateInput = TokenStream post
                                             , pstateOffset = offset
                                             , pstateSourcePos = newSourcePos
                                             , pstateTabWidth = pstateTabWidth
@@ -117,7 +117,7 @@ instance TraversableStream KBYStream where
                                             --get line number where error occurred.
                                             badLine = sourceLine newSourcePos
 
-                                            --helper func to extract line number from KBYWithInfo
+                                            --helper func to extract line number from RichToken
                                             getLine = sourceLine . startPos
 
                                             --get all tokens on the line with error.
