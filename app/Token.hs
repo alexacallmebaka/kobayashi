@@ -7,7 +7,8 @@
 
 --exports {{{1
 module Token
-    ( RichToken(..)
+    ( 
+      RichToken(..)
     , Token
     , TokenStream(..)
     ) where
