@@ -73,16 +73,16 @@ instance Stream TokenStream where
     chunkEmpty Proxy = null
     take1_ s = do
         taken <- uncons . unStream $ s
-        rest <- return $ TokenStream . snd $ taken
-        return (fst taken, rest)
+        rest <- pure $ TokenStream . snd $ taken
+        pure (fst taken, rest)
 
     takeN_ _ (TokenStream []) = Nothing
     takeN_ x s 
         | x <= 0 = Just ([], s)
         | otherwise = do 
             let taken = splitAt x $ unStream s
-            rest <- return $ TokenStream . snd $ taken
-            return (fst taken, rest)
+            rest <- pure $ TokenStream . snd $ taken
+            pure (fst taken, rest)
 
     takeWhile_ pred s = (fst pair, TokenStream . snd $ pair)
         where pair = span pred $ unStream s
