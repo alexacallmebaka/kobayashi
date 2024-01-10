@@ -1,10 +1,11 @@
 --lex input file.
 module Lexer (
-    tokenize
+    lexFile
     ) where
 
 --imports {{{1
 import KBYToken
+import KBYDoc (Document)
 
 import qualified Data.Text as T
 import qualified Data.Set as Set
@@ -15,6 +16,8 @@ import Control.Applicative hiding (some, many)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Debug
+
+import Error (BuildError(..))
 --1}}}
 
 type Parser = Parsec Void T.Text
@@ -166,3 +169,9 @@ endOfBlock = do
 
 tokenize :: String -> T.Text -> Either (ParseErrorBundle T.Text Void) KBYStream 
 tokenize = runParser file
+
+lexFile :: String -> T.Text -> Either BuildError KBYStream --{{{2
+lexFile source input = case tokenize source input of
+        Left err -> Left . LexError . T.pack $ errorBundlePretty err
+        Right tokens -> Right tokens
+--2}}}

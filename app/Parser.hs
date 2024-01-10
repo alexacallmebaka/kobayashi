@@ -3,7 +3,7 @@
 --parses a stream of tokens from the lexer to an internal document representation.
 
 module Parser (
-        parseTokens
+        parseFile
         ) where
 
 --imports {{{1
@@ -17,6 +17,7 @@ import GHC.Generics (Generic)
 
 import qualified KBYToken as KT
 import qualified KBYDoc as KD
+import Error (BuildError(..))
 --1}}}
 
 --types {{{1
@@ -186,3 +187,9 @@ inlineElem = choice [basicInlineElem basicInlineChoices, link]
 
 parseTokens :: String -> KT.KBYStream -> Either (ParseErrorBundle KT.KBYStream Void) KD.Document
 parseTokens = runParser file
+
+parseFile :: String -> KT.KBYStream -> Either BuildError KD.Document --{{{2
+parseFile source input = case parseTokens source input of
+        Left err -> Left . ParseError . T.pack $ errorBundlePretty err
+        Right doc -> Right doc
+--2}}}
