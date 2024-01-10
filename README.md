@@ -73,6 +73,9 @@ If you are ever stuck, list out all possible commands and options by using
 kobayashi help
 ```
 
+# Styling
+Where applicable, I am trying to follow [Kowanik's Haskell Style Guide](https://kowainik.github.io/posts/2019-02-06-style-guide).
+
 # What's next?
 
 Here is my current list of to-dos before the first release:
