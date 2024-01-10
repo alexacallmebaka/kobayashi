@@ -30,7 +30,7 @@ executable kobayashi
                    Parser,
                    Token,
                    Document,
-                   HTML,
+                   Html,
                    Builder,
                    Options,
                    Error

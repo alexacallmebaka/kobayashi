@@ -41,7 +41,7 @@ import Text.Megaparsec.Error (errorBundlePretty)
 import Text.Printf (printf)
 
 import Error (BuildError(..))
-import HTML (htmlify)
+import Html (htmlify)
 import Document (Document)
 import Token (TokenStream)
 import Lexer (lexFile)

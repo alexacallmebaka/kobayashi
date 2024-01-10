@@ -3,8 +3,9 @@
 
 --a module for HTML typeclass and related functions.
 
-module HTML --{{{1
-    ( HTML(..)
+module Html --{{{1
+    ( 
+      Html(..)
     , Tag(..)
     , wrap
     , htmlFold
@@ -59,11 +60,11 @@ standaloneTags = HS.fromList [P, UL, LI, Pre]
 isStandalone :: Tag -> Bool
 isStandalone x = HS.member x standaloneTags
 
-class HTML a where
+class Html a where
     htmlify :: (MonadReader Options r ) => a -> r Text
 
 --fold up a list of html elements into an HTML string.
-htmlFold :: (HTML a, MonadReader Options r) => [a] -> r Text
+htmlFold :: (Html a, MonadReader Options r) => [a] -> r Text
 htmlFold = foldM (\acc x -> do
                         c <- htmlify x
                         return $ acc `append` c) ""
@@ -81,7 +82,7 @@ genTags x = ("<" `append` tag `append` ">" `append` nline, nline `append` "</" `
                   nline = if isStandalone x then "\n"  else ""
 
 --wrap a list of inner html in tags from outer html.
-wrap :: (HTML a, MonadReader Options r) => [a] -> Tag -> r Text
+wrap :: (Html a, MonadReader Options r) => [a] -> Tag -> r Text
 wrap inner tag = do
               let (open, close) = genTags tag   
               content <- (htmlFold inner) 

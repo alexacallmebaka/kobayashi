@@ -16,7 +16,7 @@ import Control.Monad.Reader (MonadReader, ask)
 import Data.Text (append, pack, Text, unpack)
 import Path (toFilePath)
 
-import HTML (HTML, htmlify, Tag(..), wrap)
+import Html (Html, htmlify, Tag(..), wrap)
 import Options (Options(..))
 
 import qualified System.FilePath as SysPath
@@ -49,7 +49,7 @@ data InlineElem = Bold [InlineElem]
 --1}}}
 
 --how to turn IR to html. {{{1
-instance HTML BlockElem where 
+instance Html BlockElem where 
     htmlify (Header inner) = wrap inner H1
     htmlify (Subheader inner) = wrap inner H2
     htmlify (Paragraph inner) = wrap inner P
@@ -62,7 +62,7 @@ instance HTML BlockElem where
     htmlify (Image (RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\">"
     htmlify (CodeListing text) = wrap text Pre
 
-instance HTML InlineElem where
+instance Html InlineElem where
     htmlify (Bold inner) = wrap inner Strong
     htmlify (Italic inner) = wrap inner Em
     htmlify (Verb inner) = wrap inner Code
@@ -75,6 +75,6 @@ instance HTML InlineElem where
     htmlify (Link title (RemoteRef url)) = wrap title (A url)
     htmlify (PlainText inner) = pure $ inner 
 
-instance HTML UnorderedListItem where
+instance Html UnorderedListItem where
   htmlify (UnorderedListItem inner)  = wrap inner LI
 --1}}}
