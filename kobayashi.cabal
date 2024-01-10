@@ -29,7 +29,7 @@ executable kobayashi
     other-modules: Lexer,
                    Parser,
                    Token,
-                   KBYDoc,
+                   Document,
                    HTML,
                    Builder,
                    Options,

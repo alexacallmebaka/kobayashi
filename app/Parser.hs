@@ -16,7 +16,7 @@ import Data.Hashable
 import GHC.Generics (Generic)
 
 import qualified Token as KT
-import qualified KBYDoc as KD
+import qualified Document as KD
 import Error (BuildError(..))
 --1}}}
 

@@ -5,7 +5,7 @@ module Lexer (
 
 --imports {{{1
 import Token
-import KBYDoc (Document)
+import Document (Document)
 
 import qualified Data.Text as T
 import qualified Data.Set as Set

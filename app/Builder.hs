@@ -42,7 +42,7 @@ import Text.Printf (printf)
 
 import Error (BuildError(..))
 import HTML (htmlify)
-import KBYDoc (Document)
+import Document (Document)
 import Token (TokenStream)
 import Lexer (lexFile)
 import Options (Options(..))

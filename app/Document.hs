@@ -1,4 +1,4 @@
-module KBYDoc
+module Document
     ( Document(..)
     , BlockElem(..)
     , InlineElem(..)
