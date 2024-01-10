@@ -1,95 +1,108 @@
+--parses a stream of tokens on kobayshi's intermediate representation.
+
+--pragmas {{{1
+--used for making InlineIds hashable using ghc's generics.
 {-# LANGUAGE DeriveGeneric #-}
+--1}}}
 
---parses a stream of tokens from the lexer to an internal document representation.
-
-module Parser (
-        parseFile
+--exports {{{1
+module Parser 
+        (
+          parseTokens
         ) where
+--1}}}
 
 --imports {{{1
-import Text.Megaparsec hiding (Token)
-import Data.Void
-import Data.HashMap.Strict as HM
-import qualified Data.Set as Set
-import qualified Data.Text as T
+import Control.Applicative (optional, (<|>))
+import Control.Monad.Combinators (between, choice, many, some)
 import Data.Hashable
+import Data.Text (pack, Text)
+import Data.Void (Void)
 import GHC.Generics (Generic)
+import Text.Megaparsec (eof, errorBundlePretty, Parsec, runParser, token)
 
-import qualified Token as KT
-import qualified Document as KD
+import qualified Data.HashMap.Strict as HM
+import qualified Data.Set as Set
+import qualified Data.Text as Text
+
 import Error (BuildError(..))
+import Token (RichToken(..), Token(..), TokenStream)
+
+import qualified Document as IR
 --1}}}
+
 
 --types {{{1
 
 --type alias to make signatures nicer.
-type Parser = Parsec Void KT.TokenStream
+type Parser = Parsec Void TokenStream
 
 --these types are keys used in a hashmap to identify parsers for different types of
 --inline tokens. for details on why we derive generic, see here:
 --https://hackage.haskell.org/package/hashable-1.4.2.0/docs/Data-Hashable.html#g:4
-data InlineID = PlainText
-              | Bold
-              | Italic 
-              | Verb
-              | Link deriving (Eq, Generic)
+data InlineId = PlainId
+              | BoldId
+              | ItalicId
+              | VerbId
+              | LinkId deriving (Eq, Generic)
 
-instance Hashable InlineID
+--use ghc's generics to make the inlineId's hashable.
+instance Hashable InlineId
 
 --1}}}
 
 --block stuff {{{1
 
 --parse a nonempty file.
-file :: Parser KD.Document
-file = KD.Document <$> some blockElem <* eof
+stream :: Parser IR.Document
+stream = IR.Document <$> some blockElem <* eof
 
-blockElem :: Parser KD.BlockElem
+blockElem :: Parser IR.BlockElem
 blockElem = choice [ paragraph
                    , image 
-                   , oneTokenBlock KT.BeginHeader (\x -> KD.Header x)
-                   , oneTokenBlock KT.BeginSubheader (\x -> KD.Subheader x)
+                   , oneTokenBlock BeginHeader (\x -> IR.Header x)
+                   , oneTokenBlock BeginSubheader (\x -> IR.Subheader x)
                    , unorderedList
                    , codeListing ]
 
-paragraph :: Parser KD.BlockElem
-paragraph = KD.Paragraph <$> some inlineElem <* endOfBlock
+paragraph :: Parser IR.BlockElem
+paragraph = IR.Paragraph <$> some inlineElem <* endOfBlock
 
 --TODO: check that is a valid image type!
-image :: Parser KD.BlockElem
+image :: Parser IR.BlockElem
 image = do
-  basicToken KT.BeginImg
+  basicToken BeginImg
   src <- linkSource
-  basicToken KT.EndImg
+  basicToken EndImg
   endOfBlock
-  return $ KD.Image src
+  pure . IR.Image $ src
 
 
-codeListing :: Parser KD.BlockElem
+codeListing :: Parser IR.BlockElem
 codeListing = do
-  basicToken KT.BeginCodeListing
+  basicToken BeginCodeListing
   text <- some plainText
-  basicToken KT.EndCodeListing
+  basicToken EndCodeListing
   endOfBlock
-  return $ KD.CodeListing text
+  pure . IR.CodeListing $ text
 
-unorderedList :: Parser KD.BlockElem
-unorderedList = KD.UnorderedList <$> (some unorderedListItem <* endOfBlock)
+unorderedList :: Parser IR.BlockElem
+unorderedList = IR.UnorderedList <$> (some unorderedListItem <* endOfBlock)
 
-unorderedListItem :: Parser KD.UnorderedListItem
+unorderedListItem :: Parser IR.UnorderedListItem
 unorderedListItem = do
-  basicToken KT.UnorderedListItem
+  basicToken UnorderedListItem
   contents <- many inlineElem
-  return $ KD.UnorderedListItem contents
+  pure . IR.UnorderedListItem $ contents
 
 --generic parser for blocks that begin with a single token and are ended by an
 --EndOfBlock token.
 
-oneTokenBlock :: KT.Token
---               ^^ token to begin block
-              -> ([KD.InlineElem] -> KD.BlockElem) 
---              ^^ type constructor that takes a list of inlines and returns a block.
-              -> Parser KD.BlockElem
+oneTokenBlock :: Token
+              -- ^^ token to begin block
+              -> ([IR.InlineElem] -> IR.BlockElem) 
+              --  ^^ type constructor that takes a list of inlines and returns a block.
+              -> Parser IR.BlockElem
 
 oneTokenBlock tok blockCon = do
         --parse begin token
@@ -101,95 +114,92 @@ oneTokenBlock tok blockCon = do
         --get block end
         endOfBlock
 
-        return $ blockCon content
+        pure . blockCon $ content
 
 --the end of a block can either be an EndOfBlock token or EOF
 endOfBlock :: Parser ()
-endOfBlock = (() <$ basicToken KT.EndOfBlock) <|> eof
+endOfBlock = (() <$ basicToken EndOfBlock) <|> eof
 
 --1}}}
 
 --inline stuff {{{1
 
---these next two use Set.empty since there is nothing i
---want to pass to the error messages.
+--these next two use Set.empty since there is nothing i want to pass to the error messages.
 --see the docs on token: https://hackage.haskell.org/package/megaparsec-9.4.1/docs/Text-Megaparsec.html#v:token
 
-basicToken :: KT.Token -> Parser KT.Token
+basicToken :: Token -> Parser Token
 basicToken tok = token test Set.empty
-    where test ( KT.RichToken _ _ t ) = if t == tok then Just t else Nothing
+    where test ( RichToken _ _ t ) = if t == tok then Just t else Nothing
 
-link :: Parser KD.InlineElem
+link :: Parser IR.InlineElem
 link = do
-    basicToken KT.LinkStart
+    basicToken LinkStart
     title <- some $ inlineElem
-    basicToken KT.LinkSep
+    basicToken LinkSep
     src <- linkSource
-    basicToken KT.LinkEnd
-    return $ KD.Link title src
+    basicToken LinkEnd
+    pure . IR.Link title $ src
 
 --need to give better parse errors here
-linkSource :: Parser (KD.Url)
+linkSource :: Parser (IR.Url)
 linkSource = do
-    maybeRefType <- optional (basicToken KT.PageRef <|> basicToken KT.AssetRef)
-    (KD.PlainText url) <- plainText
+    maybeRefType <- optional (basicToken PageRef <|> basicToken AssetRef)
+    (IR.PlainText url) <- plainText
     case maybeRefType of
-      Nothing -> return $ KD.RemoteRef url
+      Nothing -> pure . IR.RemoteRef $ url
       Just (refType) -> case refType of
-        KT.AssetRef -> return $ KD.AssetRef url
-        KT.PageRef -> return $ KD.PageRef url
+        AssetRef -> pure . IR.AssetRef $ url
+        PageRef -> pure . IR.PageRef $ url
 
 --parse a plaintext character
-textChar :: Parser T.Text
+textChar :: Parser Text
 textChar = token test Set.empty
-    where test ( KT.RichToken _ c KT.TextChar) = Just c
+    where test ( RichToken _ c TextChar) = Just c
           test _ = Nothing
 
-plainText :: Parser KD.InlineElem
-plainText = KD.PlainText . T.concat <$> some textChar
+plainText :: Parser IR.InlineElem
+plainText = IR.PlainText . Text.concat <$> some textChar
 
 --a hashmap is used here so that we can eliminate a certain
 --parser after it has been chosen. we need to do this to match
 --tokens properly. for example, we will see "*word* is bold" as one bold
 --word as opposed to starting a bold, and then another bold nested inside
 --containing " is bold".
-basicInlineChoices :: HM.HashMap InlineID (Parser KD.InlineElem)
-basicInlineChoices = HM.fromList [ (Bold, wrapsText (\x -> KD.Bold x) KT.Bold Bold)
-                            , (Italic, wrapsText (\x -> KD.Italic x) KT.Italic Italic)
-                            , (Verb, wrapsText (\x -> KD.Verb x) KT.Verb Verb)
-                            , (PlainText, plainText)
-                            , (Link, link) ]
+basicInlineChoices :: HM.HashMap InlineId (Parser IR.InlineElem)
+basicInlineChoices = HM.fromList [ (BoldId, wrapsText (\x -> IR.Bold x) Bold BoldId)
+                            , (ItalicId, wrapsText (\x -> IR.Italic x) Italic ItalicId)
+                            , (VerbId, wrapsText (\x -> IR.Verb x) Verb VerbId)
+                            , (PlainId, plainText)
+                            , (LinkId, link) ]
 
 --simply choose an inline elem to parse from a given hashmap.
-basicInlineElem :: HM.HashMap InlineID (Parser KD.InlineElem) -> Parser KD.InlineElem
+basicInlineElem :: HM.HashMap InlineId (Parser IR.InlineElem) -> Parser IR.InlineElem
 basicInlineElem elems = choice elems
 
 --generic parser for inline elements that are wrapped in the same starting and ending token.
 --allows for arbitrary nesting on inline elements (e.g. a bold sentence with only some italic words.)
-wrapsText :: ([KD.InlineElem] -> KD.InlineElem) 
+wrapsText :: ([IR.InlineElem] -> IR.InlineElem) 
 --          ^^ type constructor for element that is the "wrapper" of the other elements.
---          e.g. in "*word*" KD.Bold is the wrapper.
-          -> KT.Token 
+--          e.g. in "*word*" IR.Bold is the wrapper.
+          -> Token 
 --          ^^the token to parse for the wrapper start and end.
-          -> InlineID 
---          ^^the key in the hashmap that identifies the  parser for the KT.Token passed.
-          -> Parser KD.InlineElem
+          -> InlineId 
+--          ^^the key in the hashmap that identifies the  parser for the Token passed.
+          -> Parser IR.InlineElem
 
 wrapsText wrapper tok obj = wrapper <$> between wrap wrap (some $ choice valid)
     where wrap = basicToken tok
           --delete current token from hashmap to avoid matching issues
           valid = HM.delete obj basicInlineChoices
 
-inlineElem :: Parser KD.InlineElem
+inlineElem :: Parser IR.InlineElem
 inlineElem = choice [basicInlineElem basicInlineChoices, link]
 
  --1}}}
 
-parseTokens :: String -> KT.TokenStream -> Either (ParseErrorBundle KT.TokenStream Void) KD.Document
-parseTokens = runParser file
-
-parseFile :: String -> KT.TokenStream -> Either BuildError KD.Document --{{{2
-parseFile source input = case parseTokens source input of
-        Left err -> Left . ParseError . T.pack $ errorBundlePretty err
+--function to run Parser
+parseTokens :: String -> TokenStream -> Either BuildError IR.Document --{{{2
+parseTokens source input = case runParser stream source input of
+        Left err -> Left . ParseError . pack . errorBundlePretty $ err
         Right doc -> Right doc
 --2}}}

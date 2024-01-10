@@ -46,7 +46,7 @@ import Document (Document(..))
 import Token (TokenStream)
 import Lexer (lexFile)
 import Options (Options(..))
-import Parser (parseFile)
+import Parser (parseTokens)
 
 import qualified Path
 import qualified Data.Text.IO as TIO
@@ -135,7 +135,7 @@ getFileDst dst file
 --convert kby-encoded text to html-encoded text.
 kbyToHtml :: (MonadReader Options r) => String -> Text -> r (Either BuildError Text) --{{{1
 kbyToHtml sourceFileName input = 
-    case (lexFile sourceFileName input) >>= (parseFile sourceFileName) of
+    case (lexFile sourceFileName input) >>= (parseTokens sourceFileName) of
       Right doc -> htmlify doc >>= pure . Right
       Left x -> pure . Left $ x
 --1}}}
