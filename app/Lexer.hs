@@ -1,30 +1,38 @@
---lex input file.
-module Lexer (
-    lexFile
-    ) where
+--lex text into a stream of tokens.
 
---imports {{{1
-import Token
-import Document (Document)
-
-import qualified Data.Text as T
-import qualified Data.Set as Set
-import Data.Void
-
-import Control.Applicative hiding (some, many)
-
-import Text.Megaparsec hiding (Token)
-import Text.Megaparsec.Char
-import Text.Megaparsec.Debug
-
-import Error (BuildError(..))
+--exports {{{1
+module Lexer 
+  (
+    tokenize
+  ) where
 --1}}}
 
-type Parser = Parsec Void T.Text
+--imports {{{1
 
+import Control.Applicative (optional, (<|>))
+import Control.Monad.Combinators (choice, manyTill_, option, some, someTill_, someTill)
+import Data.Text (Text, pack)
+import Data.Void (Void)
+import Text.Megaparsec (eof, errorBundlePretty, failure, getSourcePos, try, Parsec, runParser, (<?>))
+import Text.Megaparsec.Char (char, eol, newline, printChar, string, space)
+import Token (Token(..), TokenStream(..), RichToken(..))
+
+import qualified Data.Text as Text
+import qualified Data.Set as Set
+
+import Document (Document)
+import Error (BuildError(..))
+
+--1}}}
+
+
+--type alias to make signitures nicer
+type Parser = Parsec Void Text
+
+{- <* eof to ensure we fail if we havent reached the end of the file yet.
+you cant consume eof, so as long as we are at the end this parser will succeed.
+-}
 file :: Parser TokenStream
--- <* eof to ensure we fail if we havent reached the end of the file yet.
--- you cant consume eof, so as long as we are at the end this parser will succeed.
 file = TokenStream . concat <$> (some (choice [psuedoBlock, block]) <* eof)
 
 -- block stuff {{{1
@@ -37,19 +45,19 @@ block = choice [ unorderedList
 paragraph :: Parser [RichToken]
 paragraph = do 
     (contents, eob) <- someTill_ inline (try endOfBlock)
-    return $ (concat contents) ++ [eob]
+    pure $ (concat contents) ++ [eob]
 
 unorderedList :: Parser [RichToken]
 unorderedList = do
     (contents, eob) <- someTill_ unorderedListItem (try unorderedListEnd)
-    return $ (concat contents) ++ [eob]
+    pure $ (concat contents) ++ [eob]
 
 unorderedListItem :: Parser [RichToken]
 unorderedListItem =  do
   bullet <- basicInline '-' UnorderedListItem
   space
   contents <- someTill inline (try eol)
-  return $ [bullet] ++ (concat contents)
+  pure $ [bullet] ++ (concat contents)
 
 --cannot use the standard endOfBlock parser here since the unorderedListItem "eats" the first newline.
 unorderedListEnd :: Parser RichToken
@@ -57,7 +65,7 @@ unorderedListEnd = do
     startPos <- getSourcePos
     (() <$ eol) <|> eof
     let txt = "\\n\\n"
-    return $ RichToken startPos txt EndOfBlock
+    pure $ RichToken startPos txt EndOfBlock
 
 codeListing :: Parser [RichToken]
 codeListing = do
@@ -65,14 +73,14 @@ codeListing = do
   eol
   (contents,end) <- someTill_ textChar (listingMarker EndCodeListing)
   eob <- endOfBlock
-  return $ [start] ++ contents ++ [end] ++ [eob]
+  pure $ [start] ++ contents ++ [end] ++ [eob]
 
   
 listingMarker :: Token -> Parser RichToken
 listingMarker beginOrEnd = do
     startPos <- getSourcePos
     string "```"
-    return $ RichToken startPos "```" beginOrEnd
+    pure $ RichToken startPos "```" beginOrEnd
 
 
 --elements that act as block elements but functionally take up one line.
@@ -84,7 +92,7 @@ psuedoBlockWithPrefix :: Parser [RichToken]
 psuedoBlockWithPrefix = do
     prefix <- psuedoBlockPrefix
     (contents, eob) <- someTill_ inline (try endOfBlock)
-    return $ [prefix] ++ (concat contents) ++ [eob]
+    pure $ [prefix] ++ (concat contents) ++ [eob]
 
 psuedoBlockPrefix :: Parser RichToken
 psuedoBlockPrefix = choice
@@ -100,7 +108,7 @@ headerPrefix = do
     let txt = case tok of
                BeginHeader -> "@"
                BeginSubheader -> "@@"
-    return $ RichToken startPos txt tok
+    pure $ RichToken startPos txt tok
     
 --2}}}
 
@@ -111,8 +119,8 @@ image = do
   (content,end) <- manyTill_ textChar ( try (basicInline '>' EndImg) )
   eob <- endOfBlock
   case maybeAssetRef of
-    (Just ref) -> return $ [start] ++ [ref]  ++ content ++ [end] ++ [eob]
-    Nothing -> return $ [start] ++ content ++ [end] ++ [eob]
+    (Just ref) -> pure $ [start] ++ [ref]  ++ content ++ [end] ++ [eob]
+    Nothing -> pure $ [start] ++ content ++ [end] ++ [eob]
 
 --1}}}
 
@@ -121,7 +129,7 @@ image = do
 --either a link or a single rich text car, we use singleton lists so types match up.
 --links are lexed separately to avoid reading in / as italic in the link source.
 inline :: Parser [RichToken]
-inline = try link <|> (richTextChar >>= (\x -> return $ x:[]))
+inline = try link <|> (richTextChar >>= (\x -> pure $ x:[]))
 
 richTextChar :: Parser RichToken
 richTextChar = choice
@@ -134,7 +142,7 @@ basicInline :: Char -> Token -> Parser RichToken
 basicInline tokChar tok = do 
     startPos <- getSourcePos
     txt <- char tokChar
-    return $ RichToken startPos (T.singleton txt) tok
+    pure $ RichToken startPos (Text.singleton txt) tok
 
 pageOrAssetRef :: Parser RichToken
 pageOrAssetRef = basicInline '%' PageRef <|> basicInline '$' AssetRef
@@ -147,16 +155,15 @@ link = do
     maybeRefType <- optional pageOrAssetRef
     (href, end) <- manyTill_ textChar (basicInline ']' LinkEnd)
     case maybeRefType of
-      (Just refType) -> return $ [start] ++ title ++ [linkSep] ++ [refType] ++ href ++ [end]
-      Nothing -> return $ [start] ++ title ++ [linkSep] ++ href ++ [end]
+      (Just refType) -> pure $ [start] ++ title ++ [linkSep] ++ [refType] ++ href ++ [end]
+      Nothing -> pure $ [start] ++ title ++ [linkSep] ++ href ++ [end]
 
 textChar :: Parser RichToken
 textChar = do 
     startPos <- getSourcePos
     option '\00' (char '\\')
     txt <- printChar <|> newline
-    return $ RichToken startPos (T.singleton txt) TextChar
---1}}}
+    pure $ RichToken startPos (Text.singleton txt) TextChar
 
 endOfBlock :: Parser RichToken
 endOfBlock = do
@@ -164,14 +171,12 @@ endOfBlock = do
     eol
     (() <$ eol) <|> eof
     let txt = "\\n\\n"
-    return $ RichToken startPos txt EndOfBlock
+    pure $ RichToken startPos txt EndOfBlock
+--1}}}
 
-
-tokenize :: String -> T.Text -> Either (ParseErrorBundle T.Text Void) TokenStream 
-tokenize = runParser file
-
-lexFile :: String -> T.Text -> Either BuildError TokenStream --{{{2
-lexFile source input = case tokenize source input of
-        Left err -> Left . LexError . T.pack $ errorBundlePretty err
+--run lexer.
+tokenize :: String -> Text -> Either BuildError TokenStream --{{{2
+tokenize source input = case runParser file source input of
+        Left err -> Left . LexError . pack $ errorBundlePretty err
         Right tokens -> Right tokens
 --2}}}
