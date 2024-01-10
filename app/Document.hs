@@ -51,7 +51,8 @@ data InlineElem = Bold [InlineElem]
 --1}}}
 
 --how to turn IR to html. {{{1
-instance Html Document where
+
+$instance Html Document where --{{{2
   htmlify (Document elems) = do
       opts <- ask 
       --for each block element in document, turn it to html and append a newline. after that, combine list into one Text.
@@ -66,9 +67,9 @@ instance Html Document where
         `append`  "</head>\n<html>\n<body>\n" 
         `append`  content 
         `append` "</body>\n</html>\n"
+--2}}}
 
-
-instance Html BlockElem where 
+instance Html BlockElem where --{{{2
     htmlify (Header inner) = wrap inner H1
     htmlify (Subheader inner) = wrap inner H2
     htmlify (Paragraph inner) = wrap inner P
@@ -80,8 +81,9 @@ instance Html BlockElem where
           pure $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\">"
     htmlify (Image (RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\">"
     htmlify (CodeListing text) = wrap text Pre
+--2}}}
 
-instance Html InlineElem where
+instance Html InlineElem where --{{{2
     htmlify (Bold inner) = wrap inner Strong
     htmlify (Italic inner) = wrap inner Em
     htmlify (Verb inner) = wrap inner Code
@@ -93,7 +95,10 @@ instance Html InlineElem where
       wrap title ( A $ assetsDir `append`  assetPath )
     htmlify (Link title (RemoteRef url)) = wrap title (A url)
     htmlify (PlainText inner) = pure $ inner 
+--2}}}
 
-instance Html UnorderedListItem where
+instance Html UnorderedListItem where --{{{2
   htmlify (UnorderedListItem inner)  = wrap inner LI
+--2}}}
+
 --1}}}
