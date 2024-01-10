@@ -14,13 +14,13 @@ module Token
 --1}}}
 
 --imports {{{1
-import qualified Data.Text as T
-import qualified Data.List.NonEmpty as NE
+import Data.List (uncons)
+import Data.Text (Text, unpack)
 import Data.Proxy (Proxy(..))
-import Data.List
+import Text.Megaparsec (PosState(..), Stream, TraversableStream, VisualStream)
+import Text.Megaparsec.Pos (SourcePos(..))
 
-import Text.Megaparsec hiding (Token)
-import Text.Megaparsec.Pos
+import qualified Data.Text as Text
 import qualified Text.Megaparsec.Stream
 --1}}}
 
@@ -47,7 +47,7 @@ data Token = BeginHeader
 --a token with a starting position and text representation.
 data RichToken = RichToken
     { startPos :: SourcePos
-    , asTxt :: T.Text
+    , asTxt :: Text
     , innerToken :: Token
     } deriving (Eq, Show, Ord)
 
@@ -91,8 +91,8 @@ instance Stream TokenStream where
 --see: https://hackage.haskell.org/package/megaparsec-9.4.1/docs/Text-Megaparsec-Stream.html#t:VisualStream
 
 instance VisualStream TokenStream where
-    showTokens Proxy = foldl (\acc x -> acc ++ (T.unpack . asTxt $ x)) ""
-    tokensLength Proxy = foldl (\acc x -> acc + (T.length . asTxt $ x)) 0 
+    showTokens Proxy = foldl (\acc x -> acc ++ (unpack . asTxt $ x)) ""
+    tokensLength Proxy = foldl (\acc x -> acc + (Text.length . asTxt $ x)) 0 
 --2}}}
 
 --stream with some useful stuff for error messages {{{2
@@ -121,7 +121,7 @@ instance TraversableStream TokenStream where
                                             getLine = sourceLine . startPos
 
                                             --get all tokens on the line with error.
-                                            line = foldl (\acc x -> acc ++ (T.unpack . asTxt $ x)) "" stream
+                                            line = foldl (\acc x -> acc ++ (unpack . asTxt $ x)) "" stream
                                               where stream = [x | x <- tokenList, getLine x == badLine]
 --2}}}
 
