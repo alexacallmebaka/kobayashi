@@ -1,11 +1,17 @@
+--tokens output by the lexer.
+
+--pragmas {{{1
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RecordWildCards #-}
+--1}}}
 
+--exports {{{1
 module KBYToken
     ( KBYToken(..)
     , KBYWithInfo(..)
     , KBYStream(..)
     ) where
+--1}}}
 
 --imports {{{1
 import qualified Data.Text as T
@@ -35,7 +41,8 @@ data KBYToken = BeginHeader
               | PageRef
               | AssetRef
               | EndOfBlock 
-              | TextChar deriving (Eq, Show, Ord)
+              | TextChar
+              deriving (Eq, Show, Ord)
 
 --a token with a starting position and text representation.
 data KBYWithInfo = KBYWithInfo
@@ -45,10 +52,10 @@ data KBYWithInfo = KBYWithInfo
     } deriving (Eq, Show, Ord)
 
 --a token stream
-data KBYStream = KBYStream { unStream :: [KBYWithInfo] } deriving (Eq, Show)
+newtype KBYStream = KBYStream { unStream :: [KBYWithInfo] } deriving (Eq, Show)
 --1}}}
 
---stream instance {{{1
+--megaparsec stream instances {{{1
 
 --standard stream {{{2
 
@@ -82,7 +89,7 @@ instance Stream KBYStream where
 
 --stream that can be printed {{{2
 --see: https://hackage.haskell.org/package/megaparsec-9.4.1/docs/Text-Megaparsec-Stream.html#t:VisualStream
---
+
 instance VisualStream KBYStream where
     showTokens Proxy = foldl (\acc x -> acc ++ (T.unpack . asTxt $ x)) ""
     tokensLength Proxy = foldl (\acc x -> acc + (T.length . asTxt $ x)) 0 
@@ -117,4 +124,5 @@ instance TraversableStream KBYStream where
                                             line = foldl (\acc x -> acc ++ (T.unpack . asTxt $ x)) "" stream
                                               where stream = [x | x <- tokenList, getLine x == badLine]
 --2}}}
+
 --1}}}
