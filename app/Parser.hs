@@ -129,7 +129,7 @@ link = do
     return $ KD.Link title src
 
 --need to give better parse errors here
-linkSource :: Parser (KD.URL)
+linkSource :: Parser (KD.Url)
 linkSource = do
     maybeRefType <- optional (basicToken KT.PageRef <|> basicToken KT.AssetRef)
     (KD.PlainText url) <- plainText

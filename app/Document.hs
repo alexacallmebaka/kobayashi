@@ -1,23 +1,32 @@
+--kobayashi's flat intermediate representation.
+
+--exports {{{1
 module Document
-    ( Document(..)
-    , BlockElem(..)
+    (
+      BlockElem(..)
+    , Document(..)
     , InlineElem(..)
-    , URL (..)
     , UnorderedListItem (..)
+    , Url (..)
     ) where
+--1}}}
 
-import Data.Text
-import Control.Monad.Reader
-import Path
+--imports {{{1
+import Control.Monad.Reader (MonadReader, ask)
+import Data.Text (append, pack, Text, unpack)
+import Path (toFilePath)
+
+import HTML (HTML, htmlify, Tag(..), wrap)
+import Options (Options(..))
+
 import qualified System.FilePath as SysPath
+--1}}}
 
-import HTML
-import Options
 
 --types {{{1
 type Document = [BlockElem]
 
-data URL = RemoteRef { refSrc :: Text } 
+data Url = RemoteRef { refSrc :: Text }
          | PageRef { refSrc :: Text }
          | AssetRef { refSrc :: Text }
          deriving (Eq, Show, Ord)
@@ -29,18 +38,18 @@ data BlockElem = Paragraph [InlineElem]
                | Subheader [InlineElem] 
                | UnorderedList [UnorderedListItem]
                | CodeListing [InlineElem]
-               | Image URL deriving (Eq, Show, Ord)
+               | Image Url deriving (Eq, Show, Ord)
 
 --inline elements that represent rich text can be arbitrarily nested.
 data InlineElem = Bold [InlineElem]
                 | Italic [InlineElem]
                 | Verb [InlineElem]
-                | Link [InlineElem] URL
+                | Link [InlineElem] Url
                 | PlainText Text deriving (Eq, Show, Ord)
 --1}}}
 
---how to turn doc to html.
-instance HTML BlockElem where
+--how to turn IR to html. {{{1
+instance HTML BlockElem where 
     htmlify (Header inner) = wrap inner H1
     htmlify (Subheader inner) = wrap inner H2
     htmlify (Paragraph inner) = wrap inner P
@@ -49,8 +58,8 @@ instance HTML BlockElem where
           opts <- ask
           let assetsDir = pack . toFilePath . oAssetsDir $ opts
           let assetPath = pack . SysPath.makeRelative "/" . unpack $ src
-          return $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\">"
-    htmlify (Image (RemoteRef src)) = return $ "<img src=\"" `append` src `append` "\">"
+          pure $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\">"
+    htmlify (Image (RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\">"
     htmlify (CodeListing text) = wrap text Pre
 
 instance HTML InlineElem where
@@ -64,7 +73,8 @@ instance HTML InlineElem where
       let assetPath = pack . SysPath.makeRelative "/" . unpack $ url
       wrap title ( A $ assetsDir `append`  assetPath )
     htmlify (Link title (RemoteRef url)) = wrap title (A url)
-    htmlify (PlainText inner) = return $ inner 
+    htmlify (PlainText inner) = pure $ inner 
 
 instance HTML UnorderedListItem where
   htmlify (UnorderedListItem inner)  = wrap inner LI
+--1}}}
