@@ -9,7 +9,7 @@
 module Token
     ( 
       RichToken(..)
-    , Token
+    , Token(..)
     , TokenStream(..)
     ) where
 --1}}}
