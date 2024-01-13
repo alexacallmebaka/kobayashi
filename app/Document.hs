@@ -17,7 +17,7 @@ import Control.Monad.Reader (MonadReader, ask)
 import Data.Text (append, pack, Text, unpack)
 import Path (toFilePath)
 
-import Html (Html, htmlify, includeCss, motd, Tag(..), wrap)
+import Html (htmlFold, Html, htmlify, includeCss, motd, Tag(..), wrap)
 import Options (Options(..))
 
 import qualified Data.Text as Text
@@ -87,14 +87,22 @@ instance Html InlineElem where --{{{2
     htmlify (Bold inner) = wrap inner Strong
     htmlify (Italic inner) = wrap inner Em
     htmlify (Verb inner) = wrap inner Code
-    htmlify (Link title (PageRef url)) = wrap title (A url)
+    htmlify (PlainText inner) = pure $ inner 
+
+    htmlify (Link title (PageRef url)) =  do
+      titleText <- htmlFold title
+      pure $ "<a class=\"local-page\" href=\"" `append` url `append` "\">" `append` titleText `append` "</a>"
+
     htmlify (Link title (AssetRef url)) = do
       opts <- ask
       let assetsDir = pack . toFilePath . oAssetsDir $ opts
       let assetPath = pack . SysPath.makeRelative "/" . unpack $ url
-      wrap title ( A $ assetsDir `append`  assetPath )
-    htmlify (Link title (RemoteRef url)) = wrap title (A url)
-    htmlify (PlainText inner) = pure $ inner 
+      titleText <- htmlFold title
+      pure $ "<a class=\"local-asset\" href=\"" `append` assetsDir `append` assetPath `append` "\">" `append` titleText `append`"</a>"
+
+    htmlify (Link title (RemoteRef url)) = do
+      titleText <- htmlFold title
+      pure $ "<a class=\"remote\" target=\"_blank\"  href=\"" `append` url `append` "\">" `append` titleText `append` "</a>"
 --2}}}
 
 instance Html UnorderedListItem where --{{{2

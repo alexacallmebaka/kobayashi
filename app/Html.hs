@@ -55,7 +55,6 @@ data Tag = Strong
          | LI
          | Pre
          | Code
-         | A Text
          | P 
          deriving (Generic, Eq)
 --2}}}
@@ -74,7 +73,6 @@ textify UL = "ul"
 textify LI = "li"
 textify P = "p"
 textify Pre = "pre"
-textify (A _) = "a"
 --2}}}
 
 --set with tags that take up thier own line (i.e. are followed by newline).
@@ -92,8 +90,6 @@ genTags :: Tag -> (Text, Text) --{{{2
 genTags Pre  = ("<pre class=\"code\">\n", "</pre>")
 genTags UL  = ("<ul>\n", "</ul>")
 genTags LI  = ("<li>\n", "\n</li>\n")
-genTags (A src) = (start, "</a>")
-                where start = "<a href=\"" `append` src `append` "\">"
 genTags x = ("<" `append` tag `append` ">" `append` nline, nline `append` "</" `append` tag `append` ">")
             where tag = textify x
                   --certain tags should be formatted on their own line.
