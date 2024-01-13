@@ -40,6 +40,8 @@ data BlockElem = Paragraph [InlineElem]
                | Subheader [InlineElem] 
                | UnorderedList [UnorderedListItem]
                | CodeListing [InlineElem]
+               --1st list is quote, 2nd is author.
+               | BlockQuote [InlineElem] [InlineElem]
                | Image Url deriving (Eq, Show, Ord)
 
 --inline elements that represent rich text can be arbitrarily nested.
@@ -75,12 +77,22 @@ instance Html BlockElem where --{{{2
     htmlify (Paragraph inner) = wrap inner P
     htmlify (UnorderedList inner) = wrap inner UL
     htmlify (Image (AssetRef src)) = do
-          opts <- ask
-          let assetsDir = pack . toFilePath . oAssetsDir $ opts
-          let assetPath = pack . SysPath.makeRelative "/" . unpack $ src
-          pure $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\">"
+      opts <- ask
+      let assetsDir = pack . toFilePath . oAssetsDir $ opts
+      let assetPath = pack . SysPath.makeRelative "/" . unpack $ src
+      pure $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\">"
     htmlify (Image (RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\">"
     htmlify (CodeListing text) = wrap text Pre
+    htmlify (BlockQuote quote author) = do
+      quoteText <- htmlFold quote
+      authorText <- htmlFold author
+      pure 
+        $ "<div class=\"blockquote\">\n<span class=\"quote\">"
+        `append` quoteText
+        `append` "</span><span class=\"author\">"
+        `append` authorText
+        `append` "</span>\n</div>"
+      
 --2}}}
 
 instance Html InlineElem where --{{{2

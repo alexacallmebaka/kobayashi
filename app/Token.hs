@@ -30,6 +30,8 @@ import qualified Text.Megaparsec.Stream
 data Token = BeginHeader
               | BeginSubheader
               | UnorderedListItem
+              | BlockQuote
+              | BlockQuoteAuthor
               | BeginImg
               | EndImg
               | BeginCodeListing

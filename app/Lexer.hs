@@ -40,6 +40,7 @@ file = TokenStream . concat <$> (some (choice [psuedoBlock, block]) <* eof)
 block :: Parser [RichToken]
 block = choice [ unorderedList
                , codeListing
+               , blockQuote
                , paragraph ]
 
 paragraph :: Parser [RichToken]
@@ -66,6 +67,15 @@ unorderedListEnd = do
     (() <$ eol) <|> eof
     let txt = "\\n\\n"
     pure $ RichToken startPos txt EndOfBlock
+
+blockQuote :: Parser [RichToken]
+blockQuote = do
+    start <- basicInline '>' BlockQuote 
+    space
+    (contents, authMark) <- someTill_ inline (try $ basicInline '~' BlockQuoteAuthor)
+    space
+    (author,eob) <- someTill_ inline (try endOfBlock)
+    pure $ [start] ++ (concat contents) ++ [authMark] ++ (concat author) ++ [eob]
 
 codeListing :: Parser [RichToken]
 codeListing = do

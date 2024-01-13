@@ -63,6 +63,7 @@ blockElem = choice [ paragraph
                    , oneTokenBlock BeginHeader (\x -> IR.Header x)
                    , oneTokenBlock BeginSubheader (\x -> IR.Subheader x)
                    , unorderedList
+                   , blockQuote
                    , codeListing ]
 
 paragraph :: Parser IR.BlockElem
@@ -77,6 +78,14 @@ image = do
   endOfBlock
   pure . IR.Image $ src
 
+blockQuote :: Parser IR.BlockElem
+blockQuote = do
+  basicToken BlockQuote
+  quote <- some inlineElem
+  basicToken BlockQuoteAuthor
+  author <- some inlineElem
+  endOfBlock
+  pure . IR.BlockQuote quote $ author
 
 codeListing :: Parser IR.BlockElem
 codeListing = do
