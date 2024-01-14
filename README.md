@@ -92,6 +92,7 @@ Nice to have:
 * Templates (w/ params too)
 * Check if files/images linked to exist.
 * clean command
+* c-style `#include` for other `kby` files.
 
 Some other ideas for after a stable release:
 * Test suite
