@@ -1,4 +1,6 @@
 --parses a stream of tokens on kobayshi's intermediate representation.
+ 
+--TODO: handle links more cleanly with textChar as opposed to PlainText
 
 --pragmas {{{1
 --used for making InlineIds hashable using ghc's generics.
@@ -19,7 +21,7 @@ import Data.Hashable
 import Data.Text (pack, Text)
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Text.Megaparsec (eof, errorBundlePretty, Parsec, runParser, token)
+import Text.Megaparsec (eof, errorBundlePretty, failure, manyTill, try, Parsec, runParser, token)
 
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Set as Set
@@ -64,7 +66,8 @@ blockElem = choice [ paragraph
                    , oneTokenBlock BeginSubheader (\x -> IR.Subheader x)
                    , unorderedList
                    , blockQuote
-                   , codeListing ]
+                   , codeListing
+                   , subdocument ]
 
 paragraph :: Parser IR.BlockElem
 paragraph = IR.Paragraph <$> some inlineElem <* endOfBlock
@@ -94,6 +97,29 @@ codeListing = do
   basicToken EndCodeListing
   endOfBlock
   pure . IR.CodeListing $ text
+
+subdocument :: Parser IR.BlockElem
+subdocument = do
+  label <- beginSubdocLabel
+  content <- manyTill blockElem (try $ endSubdocLabel label)
+  pure . IR.Subdocument label $ content
+
+beginSubdocLabel :: Parser Text
+beginSubdocLabel = do
+  basicToken BeginSubdocLabel 
+  label <- Text.concat <$> some textChar
+  basicToken EndSubdocLabel
+  pure label
+
+endSubdocLabel :: Text -> Parser ()
+endSubdocLabel startLabel = do
+  basicToken BeginSubdocLabel 
+  endLabel <- Text.concat <$> some textChar
+  basicToken EndSubdocLabel
+  if startLabel == endLabel 
+     then pure ()
+     --TODO: better error messages
+     else failure Nothing Set.empty
 
 unorderedList :: Parser IR.BlockElem
 unorderedList = IR.UnorderedList <$> (some unorderedListItem <* endOfBlock)

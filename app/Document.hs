@@ -42,14 +42,18 @@ data BlockElem = Paragraph [InlineElem]
                | CodeListing [InlineElem]
                --1st list is quote, 2nd is author.
                | BlockQuote [InlineElem] [InlineElem]
-               | Image Url deriving (Eq, Show, Ord)
+               | Image Url
+               --label + list of elements.
+               | Subdocument Text [BlockElem]
+               deriving (Eq, Show, Ord)
 
 --inline elements that represent rich text can be arbitrarily nested.
 data InlineElem = Bold [InlineElem]
                 | Italic [InlineElem]
                 | Verb [InlineElem]
                 | Link [InlineElem] Url
-                | PlainText Text deriving (Eq, Show, Ord)
+                | PlainText Text 
+                deriving (Eq, Show, Ord)
 --1}}}
 
 --how to turn IR to html. {{{1
@@ -93,6 +97,11 @@ instance Html BlockElem where --{{{2
         `append` "</span><span class=\"author\">"
         `append` authorText
         `append` "</span>\n</div>"
+
+    htmlify (Subdocument label elems) = do
+      --for each block element in document, turn it to html and append a newline. after that, combine list into one Text.
+      content <- forM elems (\x -> htmlify x >>= pure . append "\n") >>= pure . Text.concat
+      pure $ "<div class=\"" `append` label `append` "\">\n" `append` content `append` "</div>"
       
 --2}}}
 

@@ -1,5 +1,7 @@
 --lex text into a stream of tokens.
 
+--TODO: fix links and verbatim to be true literal not with escape
+
 --exports {{{1
 module Lexer 
   (
@@ -96,6 +98,7 @@ listingMarker beginOrEnd = do
 --elements that act as block elements but functionally take up one line.
 psuedoBlock :: Parser [RichToken]
 psuedoBlock = choice [ psuedoBlockWithPrefix 
+                     , subdocMarker
                      , image ]
 
 psuedoBlockWithPrefix :: Parser [RichToken]
@@ -131,6 +134,13 @@ image = do
   case maybeAssetRef of
     (Just ref) -> pure $ [start] ++ [ref]  ++ content ++ [end] ++ [eob]
     Nothing -> pure $ [start] ++ content ++ [end] ++ [eob]
+
+subdocMarker :: Parser [RichToken]
+subdocMarker = do
+  start <- basicInline '{' BeginSubdocLabel
+  (content, end) <- someTill_ plainChar (try (basicInline '}' EndSubdocLabel))
+  eol 
+  pure $ [start] ++ content ++ [end]
 
 --1}}}
 
@@ -168,11 +178,19 @@ link = do
       (Just refType) -> pure $ [start] ++ title ++ [linkSep] ++ [refType] ++ href ++ [end]
       Nothing -> pure $ [start] ++ title ++ [linkSep] ++ href ++ [end]
 
+--potentially escaped plaintext.
 textChar :: Parser RichToken
 textChar = do 
     startPos <- getSourcePos
     option '\00' (char '\\')
     txt <- printChar <|> newline
+    pure $ RichToken startPos (Text.singleton txt) TextChar
+
+--literal plaintext, printable unicode.
+plainChar :: Parser RichToken
+plainChar = do
+    startPos <- getSourcePos
+    txt <- printChar
     pure $ RichToken startPos (Text.singleton txt) TextChar
 
 endOfBlock :: Parser RichToken

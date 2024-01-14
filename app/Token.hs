@@ -28,25 +28,27 @@ import qualified Text.Megaparsec.Stream
 
 --types {{{1
 data Token = BeginHeader
-              | BeginSubheader
-              | UnorderedListItem
-              | BlockQuote
-              | BlockQuoteAuthor
-              | BeginImg
-              | EndImg
-              | BeginCodeListing
-              | EndCodeListing
-              | Bold 
-              | Italic
-              | Verb
-              | LinkStart
-              | LinkEnd
-              | LinkSep
-              | PageRef
-              | AssetRef
-              | EndOfBlock 
-              | TextChar
-              deriving (Eq, Show, Ord)
+           | BeginSubheader
+           | UnorderedListItem
+           | BlockQuote
+           | BlockQuoteAuthor
+           | BeginImg
+           | EndImg
+           | BeginCodeListing
+           | EndCodeListing
+           | Bold 
+           | Italic
+           | Verb
+           | LinkStart
+           | LinkEnd
+           | LinkSep
+           | PageRef
+           | AssetRef
+           | BeginSubdocLabel
+           | EndSubdocLabel
+           | EndOfBlock 
+           | TextChar
+           deriving (Eq, Show, Ord)
 
 --a token with a starting position and text representation.
 data RichToken = RichToken
