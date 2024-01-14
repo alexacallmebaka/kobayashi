@@ -120,7 +120,7 @@ includeCss :: (MonadReader Options r) => r Text --{{{2
 includeCss = do
   opts <- ask
   let cssPath = pack . toFilePath . oCssPath $ opts
-  pure $ "<link rel=\"stylesheet\" href=\"" `append` cssPath `append` "\">\n"
+  pure $ "<link rel=\"stylesheet\" href=\"" `append` cssPath `append` "\" />\n"
 --2}}}
 
 --comment to add some flair.

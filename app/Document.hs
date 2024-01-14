@@ -81,8 +81,8 @@ instance Html BlockElem where --{{{2
       opts <- ask
       let assetsDir = pack . toFilePath . oAssetsDir $ opts
       let assetPath = pack . SysPath.makeRelative "/" . unpack $ src
-      pure $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\">"
-    htmlify (Image (RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\">"
+      pure $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\" />"
+    htmlify (Image (RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\" />"
     htmlify (CodeListing text) = wrap text Pre
     htmlify (BlockQuote quote author) = do
       quoteText <- htmlFold quote
