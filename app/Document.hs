@@ -39,19 +39,20 @@ data BlockElem = Paragraph [InlineElem]
                | Header [InlineElem]
                | Subheader [InlineElem] 
                | UnorderedList [UnorderedListItem]
-               | CodeListing [InlineElem]
                --1st list is quote, 2nd is author.
                | BlockQuote [InlineElem] [InlineElem]
                | Image Url
                --label + list of elements.
                | Subdocument Text [BlockElem]
+               --Text is the verbatim code.
+               | CodeListing Text
                deriving (Eq, Show, Ord)
 
 --inline elements that represent rich text can be arbitrarily nested.
 data InlineElem = Bold [InlineElem]
                 | Italic [InlineElem]
-                | Verb [InlineElem]
                 | Link [InlineElem] Url
+                | Verb Text
                 | PlainText Text 
                 deriving (Eq, Show, Ord)
 --1}}}
@@ -87,7 +88,7 @@ instance Html BlockElem where --{{{2
       let assetPath = pack . SysPath.makeRelative "/" . unpack $ src
       pure $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\" />"
     htmlify (Image (RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\" />"
-    htmlify (CodeListing text) = wrap text Pre
+    htmlify (CodeListing text) = pure $ "<pre class=\"code\">\n" `append` text `append` "\n</pre>"
     htmlify (BlockQuote quote author) = do
       quoteText <- htmlFold quote
       authorText <- htmlFold author
@@ -108,7 +109,7 @@ instance Html BlockElem where --{{{2
 instance Html InlineElem where --{{{2
     htmlify (Bold inner) = wrap inner Strong
     htmlify (Italic inner) = wrap inner Em
-    htmlify (Verb inner) = wrap inner Code
+    htmlify (Verb inner) = pure $ "<code>" `append` inner `append` "</code>"
     htmlify (PlainText inner) = pure $ inner 
 
     htmlify (Link title (PageRef url)) =  do

@@ -54,8 +54,6 @@ data Tag = Strong
          | H2
          | UL
          | LI
-         | Pre
-         | Code
          | P 
          deriving (Generic, Eq)
 --2}}}
@@ -66,19 +64,17 @@ instance Hashable Tag
 --turn a tag into text!
 textify :: Tag -> Text --{{{2
 textify Strong = "strong"
-textify Code = "code"
 textify Em = "em"
 textify H1 = "h1"
 textify H2 = "h2"
 textify UL = "ul"
 textify LI = "li"
 textify P = "p"
-textify Pre = "pre"
 --2}}}
 
 --set with tags that take up thier own line (i.e. are followed by newline).
 standaloneTags :: HS.HashSet Tag --{{{2
-standaloneTags = HS.fromList [P, UL, LI, Pre]
+standaloneTags = HS.fromList [P, UL, LI]
 --2}}}
 
 --check if tag is in standalone set.
@@ -88,7 +84,6 @@ isStandalone x = HS.member x standaloneTags
 
 --generate start and end tag text from a tag datatype.
 genTags :: Tag -> (Text, Text) --{{{2
-genTags Pre  = ("<pre class=\"code\">\n", "</pre>")
 genTags UL  = ("<ul>\n", "</ul>")
 genTags LI  = ("<li>\n", "\n</li>\n")
 genTags x = ("<" `append` tag `append` ">" `append` nline, nline `append` "</" `append` tag `append` ">")

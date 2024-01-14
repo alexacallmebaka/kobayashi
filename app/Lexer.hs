@@ -1,7 +1,5 @@
 --lex text into a stream of tokens.
 
---TODO: fix links and verbatim to be true literal not with escape
-
 --exports {{{1
 module Lexer 
   (
@@ -83,7 +81,7 @@ codeListing :: Parser [RichToken]
 codeListing = do
   start <- listingMarker BeginCodeListing
   eol
-  (contents,end) <- someTill_ textChar (listingMarker EndCodeListing)
+  (contents,end) <- someTill_ (plainChar <|> richNewline) (listingMarker EndCodeListing)
   eob <- endOfBlock
   pure $ [start] ++ contents ++ [end] ++ [eob]
 
@@ -129,7 +127,7 @@ image :: Parser [RichToken]
 image = do
   start <- basicInline '<' BeginImg
   maybeAssetRef <- optional $ basicInline '$' AssetRef
-  (content,end) <- manyTill_ textChar ( try (basicInline '>' EndImg) )
+  (content,end) <- manyTill_ plainChar ( try (basicInline '>' EndImg) )
   eob <- endOfBlock
   case maybeAssetRef of
     (Just ref) -> pure $ [start] ++ [ref]  ++ content ++ [end] ++ [eob]
@@ -155,7 +153,7 @@ richTextChar :: Parser RichToken
 richTextChar = choice
     [ basicInline '*' Bold <?> "bold"
     , basicInline '/' Italic <?> "italic"
-    , basicInline '`' Verb <?> "inline verbatim"
+    , basicInline '`' Verb <?> "verbatim"
     , textChar <?> "printable unicode char"]
 
 basicInline :: Char -> Token -> Parser RichToken
@@ -173,7 +171,7 @@ link = do
     --fail if early link end char.
     (title, linkSep) <- manyTill_ ((char ']' >> (failure Nothing Set.empty)) <|> richTextChar) (basicInline '|' LinkSep)
     maybeRefType <- optional pageOrAssetRef
-    (href, end) <- manyTill_ textChar (basicInline ']' LinkEnd)
+    (href, end) <- manyTill_ plainChar (basicInline ']' LinkEnd)
     case maybeRefType of
       (Just refType) -> pure $ [start] ++ title ++ [linkSep] ++ [refType] ++ href ++ [end]
       Nothing -> pure $ [start] ++ title ++ [linkSep] ++ href ++ [end]
@@ -183,6 +181,7 @@ textChar :: Parser RichToken
 textChar = do 
     startPos <- getSourcePos
     option '\00' (char '\\')
+    --TODO: find a way to make this dos friendly.
     txt <- printChar <|> newline
     pure $ RichToken startPos (Text.singleton txt) TextChar
 
@@ -192,6 +191,11 @@ plainChar = do
     startPos <- getSourcePos
     txt <- printChar
     pure $ RichToken startPos (Text.singleton txt) TextChar
+
+richNewline = do
+  startPos <- getSourcePos
+  txt <- newline
+  pure $ RichToken startPos (Text.singleton txt) TextChar
 
 endOfBlock :: Parser RichToken
 endOfBlock = do

@@ -1,7 +1,5 @@
 --parses a stream of tokens on kobayshi's intermediate representation.
  
---TODO: handle links more cleanly with textChar as opposed to PlainText
-
 --pragmas {{{1
 --used for making InlineIds hashable using ghc's generics.
 {-# LANGUAGE DeriveGeneric #-}
@@ -45,7 +43,6 @@ type Parser = Parsec Void TokenStream
 data InlineId = PlainId
               | BoldId
               | ItalicId
-              | VerbId
               | LinkId deriving (Eq, Generic)
 
 --use ghc's generics to make the inlineId's hashable.
@@ -93,7 +90,7 @@ blockQuote = do
 codeListing :: Parser IR.BlockElem
 codeListing = do
   basicToken BeginCodeListing
-  text <- some plainText
+  text <- Text.concat <$> some textChar
   basicToken EndCodeListing
   endOfBlock
   pure . IR.CodeListing $ text
@@ -179,7 +176,7 @@ link = do
 linkSource :: Parser (IR.Url)
 linkSource = do
     maybeRefType <- optional (basicToken PageRef <|> basicToken AssetRef)
-    (IR.PlainText url) <- plainText
+    url <- Text.concat <$> some textChar
     case maybeRefType of
       Nothing -> pure . IR.RemoteRef $ url
       Just (refType) -> case refType of
@@ -192,6 +189,9 @@ textChar = token test Set.empty
     where test ( RichToken _ c TextChar) = Just c
           test _ = Nothing
 
+verb :: Parser IR.InlineElem
+verb = IR.Verb . Text.concat <$> between (basicToken Verb) (basicToken Verb) (some textChar)
+
 plainText :: Parser IR.InlineElem
 plainText = IR.PlainText . Text.concat <$> some textChar
 
@@ -203,7 +203,6 @@ plainText = IR.PlainText . Text.concat <$> some textChar
 basicInlineChoices :: HM.HashMap InlineId (Parser IR.InlineElem)
 basicInlineChoices = HM.fromList [ (BoldId, wrapsText (\x -> IR.Bold x) Bold BoldId)
                             , (ItalicId, wrapsText (\x -> IR.Italic x) Italic ItalicId)
-                            , (VerbId, wrapsText (\x -> IR.Verb x) Verb VerbId)
                             , (PlainId, plainText)
                             , (LinkId, link) ]
 
@@ -228,7 +227,7 @@ wrapsText wrapper tok obj = wrapper <$> between wrap wrap (some $ choice valid)
           valid = HM.delete obj basicInlineChoices
 
 inlineElem :: Parser IR.InlineElem
-inlineElem = choice [basicInlineElem basicInlineChoices, link]
+inlineElem = choice [basicInlineElem basicInlineChoices, link, verb]
 
  --1}}}
 
