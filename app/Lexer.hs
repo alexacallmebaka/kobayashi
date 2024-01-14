@@ -33,7 +33,7 @@ type Parser = Parsec Void Text
 you cant consume eof, so as long as we are at the end this parser will succeed.
 -}
 file :: Parser TokenStream
-file = TokenStream . concat <$> (some (choice [psuedoBlock, block]) <* eof)
+file = TokenStream . concat <$> (some (space *> choice [psuedoBlock, block]) <* eof)
 
 -- block stuff {{{1
 
