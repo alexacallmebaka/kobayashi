@@ -17,7 +17,7 @@ import Control.Monad.Reader (MonadReader, ask)
 import Data.Text (append, pack, Text, unpack)
 import Path (toFilePath)
 
-import Html (htmlFold, Html, htmlify, includeCss, motd, Tag(..), wrap)
+import Html (htmlFold, Html, htmlify, includeCss, meta, motd, Tag(..), wrap)
 import Options (Options(..))
 
 import qualified Data.Text as Text
@@ -65,6 +65,7 @@ instance Html Document where --{{{2
         $ "<!DOCTYPE HTML>\n" 
         `append` motd 
         `append` "<head>\n" 
+        `append` meta
         `append` css
         `append`  "</head>\n<html>\n<body>\n" 
         `append`  content 

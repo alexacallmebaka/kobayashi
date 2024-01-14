@@ -16,6 +16,7 @@ module Html
       Html(..)
     , Tag(..)
 
+    , meta
     , motd
     , includeCss
 
@@ -126,5 +127,10 @@ includeCss = do
 motd :: Text --{{{2
 motd = "<!--Made with <3 using Kobayashi: https://github.com/alexacallmebaka/kobayashi-->\n"
 --2}}}
+
+--add various meta tags.
+meta :: Text
+--sets encoding, viewport.
+meta = "<meta charset=\"UTF-8\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n"
 
 --1}}}
