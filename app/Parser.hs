@@ -1,4 +1,6 @@
 --parses a stream of tokens on kobayshi's intermediate representation.
+
+--TODO: throw parse error on mismatched subdoc
  
 --pragmas {{{1
 --used for making InlineIds hashable using ghc's generics.
@@ -104,14 +106,14 @@ subdocument = do
 beginSubdocLabel :: Parser Text
 beginSubdocLabel = do
   basicToken BeginSubdocLabel 
-  label <- Text.concat <$> some textChar
+  label <- Text.concat <$> some textCharNoSpace
   basicToken EndSubdocLabel
   pure label
 
 endSubdocLabel :: Text -> Parser ()
 endSubdocLabel startLabel = do
   basicToken BeginSubdocLabel 
-  endLabel <- Text.concat <$> some textChar
+  endLabel <- Text.concat <$> some textCharNoSpace
   basicToken EndSubdocLabel
   if startLabel == endLabel 
      then pure ()
@@ -176,7 +178,7 @@ link = do
 linkSource :: Parser (IR.Url)
 linkSource = do
     maybeRefType <- optional (basicToken PageRef <|> basicToken AssetRef)
-    url <- Text.concat <$> some textChar
+    url <- Text.concat <$> some textCharNoSpace
     case maybeRefType of
       Nothing -> pure . IR.RemoteRef $ url
       Just (refType) -> case refType of
@@ -188,6 +190,15 @@ textChar :: Parser Text
 textChar = token test Set.empty
     where test ( RichToken _ c TextChar) = Just c
           test _ = Nothing
+
+--match a text char that is not a space and is printable.
+textCharNoSpace :: Parser Text
+textCharNoSpace = token test Set.empty
+    where 
+          test ( RichToken _ " " TextChar) = Nothing
+          test ( RichToken _ c TextChar) = Just c
+          test _ = Nothing
+
 
 verb :: Parser IR.InlineElem
 verb = IR.Verb . Text.concat <$> between (basicToken Verb) (basicToken Verb) (some textChar)
