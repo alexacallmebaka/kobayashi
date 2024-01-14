@@ -26,7 +26,7 @@ module Options
 
 --imports {{{1
 import Data.Text (Text, pack, unpack, append)
-import Path (absdir, Abs, Dir, File,  Path, Rel, reldir, relfile, (</>))
+import Path (absdir, absfile, Abs, Dir, File,  Path, Rel, reldir, (</>))
 import Toml (TomlCodec, TomlDecodeError, (.=))
 
 import Error (ErrorMsg)
@@ -180,8 +180,8 @@ makeOptions PartialOptions {..} = do
 defaultPartialOptions :: PartialOptions --{{{2
 defaultPartialOptions = PartialOptions
   { poBuildDir = pure [reldir|build|]
-  , poAssetsDir = pure [absdir|/assets|]
-  , poCssPath = pure $ [absdir|/assets|]</>[relfile|style.css|]
+  , poAssetsDir = pure [absdir|/media|]
+  , poCssPath = pure $ [absfile|/style.css|]
   }
 --2}}}
 
