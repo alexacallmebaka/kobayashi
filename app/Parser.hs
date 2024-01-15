@@ -177,13 +177,13 @@ link = do
 --need to give better parse errors here
 linkSource :: Parser (IR.Url)
 linkSource = do
-    maybeRefType <- optional (basicToken PageRef <|> basicToken AssetRef)
+    maybeAssetRef <- optional (basicToken AssetRef)
     url <- Text.concat <$> some textCharNoSpace
-    case maybeRefType of
-      Nothing -> pure . IR.RemoteRef $ url
-      Just (refType) -> case refType of
-        AssetRef -> pure . IR.AssetRef $ url
-        PageRef -> pure . IR.PageRef $ url
+    case maybeAssetRef of
+      Just AssetRef -> pure . IR.AssetRef $ url
+      Nothing -> if ( any ( flip (Text.isPrefixOf) url ) $ ["/", "..", "."] )
+                    then pure . IR.PageRef $ url
+                    else pure . IR.RemoteRef $ url
 
 --parse a plaintext character
 textChar :: Parser Text

@@ -42,7 +42,6 @@ data Token = BeginHeader
            | LinkStart
            | LinkEnd
            | LinkSep
-           | PageRef
            | AssetRef
            | BeginSubdocLabel
            | EndSubdocLabel

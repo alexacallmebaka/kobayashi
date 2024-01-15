@@ -162,15 +162,12 @@ basicInline tokChar tok = do
     txt <- char tokChar
     pure $ RichToken startPos (Text.singleton txt) tok
 
-pageOrAssetRef :: Parser RichToken
-pageOrAssetRef = basicInline '%' PageRef <|> basicInline '$' AssetRef
-
 link :: Parser [RichToken]
 link = do
     start <- basicInline '[' LinkStart
     --fail if early link end char.
     (title, linkSep) <- manyTill_ ((char ']' >> (failure Nothing Set.empty)) <|> richTextChar) (basicInline '|' LinkSep)
-    maybeRefType <- optional pageOrAssetRef
+    maybeRefType <- optional (basicInline '$' AssetRef)
     (href, end) <- manyTill_ plainChar (basicInline ']' LinkEnd)
     case maybeRefType of
       (Just refType) -> pure $ [start] ++ title ++ [linkSep] ++ [refType] ++ href ++ [end]
