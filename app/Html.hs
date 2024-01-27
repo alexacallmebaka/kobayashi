@@ -120,7 +120,7 @@ includeCss = do
 
 --comment to add some flair.
 motd :: Text --{{{2
-motd = "<!--Made with <3 using Kobayashi: https://github.com/alexacallmebaka/kobayashi-->\n"
+motd = "<!--Made with ❤️ using Kobayashi: https://github.com/alexacallmebaka/kobayashi-->\n"
 --2}}}
 
 --add various meta tags.
