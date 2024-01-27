@@ -89,8 +89,8 @@ wrapInSec :: ( MonadReader Options r ) => Text -> [InlineElem] -> r Text
 wrapInSec content title = do
     richSecTitle <- htmlFold title
     let rawSecTitle = Text.concat . map extractRawText $ title
-    --for the id, only use acsii characters, replacing spaces with hyphens.
-    let secId = Text.replace " " "-" . Text.toLower . Text.strip . Text.filter Char.isAscii $ rawSecTitle
+    --for the id, only use alphanum characters and hyphens, replacing spaces with hyphens.
+    let secId = Text.replace " " "-" . Text.toLower . Text.strip . Text.filter (\x -> Char.isAlphaNum x || Char.isSpace x) $ rawSecTitle
     pure
       $ "<section id=\""
       `append` secId
@@ -111,6 +111,8 @@ instance Html Document where --{{{2
       --for each block element in document, turn it to html and append a newline. after that, combine list into one Text.
       richPageTitle <- htmlFold title
       let rawPageTitle = Text.concat . map extractRawText $ title
+      --for the id, only use alphanum characters and hyphens, replacing spaces with hyphens.
+      let pageId = Text.replace " " "-" . Text.toLower . Text.strip . Text.filter (\x -> Char.isAlphaNum x || Char.isSpace x) $ rawPageTitle
       content <- forM sections (\x -> htmlify x >>= pure . append "\n") >>= pure . Text.concat
       css <- includeCss
       --combine everything for our final html page.
@@ -123,11 +125,13 @@ instance Html Document where --{{{2
         `append` "<title>"
         `append` rawPageTitle
         `append` "</title>\n"
-        `append` "</head>\n<html>\n<body>\n<h1>" 
+        `append` "</head>\n<html>\n<body>\n<article id=\""
+        `append` pageId
+        `append` "\">\n<h1>" 
         `append` richPageTitle
         `append` "</h1>\n"
         `append`  content 
-        `append` "</body>\n</html>\n"
+        `append` "</article></body>\n</html>\n"
 --2}}}
 
 
