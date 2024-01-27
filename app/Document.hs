@@ -90,7 +90,7 @@ wrapInSec content title = do
     richSecTitle <- htmlFold title
     let rawSecTitle = Text.concat . map extractRawText $ title
     --for the id, only use acsii characters, replacing spaces with hyphens.
-    let secId = Text.replace " " "-" . Text.strip . Text.filter Char.isAscii $ rawSecTitle
+    let secId = Text.replace " " "-" . Text.toLower . Text.strip . Text.filter Char.isAscii $ rawSecTitle
     pure
       $ "<section id=\""
       `append` secId
