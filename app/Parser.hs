@@ -1,6 +1,6 @@
 --parses a stream of tokens on kobayshi's intermediate representation.
 
---TODO: throw parse error on mismatched subdoc
+--TODO: throw parse error on mismatched group.
  
 --pragmas {{{1
 --used for making InlineIds hashable using ghc's generics.
@@ -77,7 +77,7 @@ blockElem = choice [ paragraph
                    , unorderedList
                    , blockQuote
                    , codeListing
-                   , subdocument ]
+                   , group ]
 
 paragraph :: Parser IR.BlockElem
 paragraph = IR.Paragraph <$> some inlineElem <* endOfBlock
@@ -108,24 +108,24 @@ codeListing = do
   endOfBlock
   pure . IR.CodeListing $ text
 
-subdocument :: Parser IR.BlockElem
-subdocument = do
-  label <- beginSubdocLabel
-  content <- manyTill blockElem (try $ endSubdocLabel label)
-  pure . IR.Subdocument label $ content
+group :: Parser IR.BlockElem
+group = do
+  label <- beginGroupLabel
+  content <- manyTill blockElem (try $ endGroupLabel label)
+  pure . IR.Group label $ content
 
-beginSubdocLabel :: Parser Text
-beginSubdocLabel = do
-  basicToken BeginSubdocLabel 
+beginGroupLabel :: Parser Text
+beginGroupLabel = do
+  basicToken BeginGroupLabel 
   label <- Text.concat <$> some textCharNoSpace
-  basicToken EndSubdocLabel
+  basicToken EndGroupLabel
   pure label
 
-endSubdocLabel :: Text -> Parser ()
-endSubdocLabel startLabel = do
-  basicToken BeginSubdocLabel 
+endGroupLabel :: Text -> Parser ()
+endGroupLabel startLabel = do
+  basicToken BeginGroupLabel 
   endLabel <- Text.concat <$> some textCharNoSpace
-  basicToken EndSubdocLabel
+  basicToken EndGroupLabel
   if startLabel == endLabel 
      then pure ()
      --TODO: better error messages

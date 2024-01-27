@@ -97,7 +97,7 @@ listingMarker beginOrEnd = do
 psuedoBlock :: Parser [RichToken]
 psuedoBlock = choice [ titleMarker
                      , secMarker
-                     , subdocMarker
+                     , groupMarker
                      , image ]
 
 titleMarker :: Parser [RichToken]
@@ -125,10 +125,10 @@ image = do
     (Just ref) -> pure $ [start] ++ [ref]  ++ content ++ [end] ++ [eob]
     Nothing -> pure $ [start] ++ content ++ [end] ++ [eob]
 
-subdocMarker :: Parser [RichToken]
-subdocMarker = do
-  start <- basicInline '{' BeginSubdocLabel
-  (content, end) <- someTill_ plainChar (try (basicInline '}' EndSubdocLabel))
+groupMarker :: Parser [RichToken]
+groupMarker = do
+  start <- basicInline '{' BeginGroupLabel
+  (content, end) <- someTill_ plainChar (try (basicInline '}' EndGroupLabel))
   eol 
   pure $ [start] ++ content ++ [end]
 

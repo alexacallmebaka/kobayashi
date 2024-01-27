@@ -59,7 +59,7 @@ data BlockElem = Paragraph [InlineElem]
                | BlockQuote [InlineElem] [InlineElem]
                | Image Url
                --label + list of elements.
-               | Subdocument Text [BlockElem]
+               | Group Text [BlockElem]
                --Text is the verbatim code.
                | CodeListing Text
                deriving (Eq, Show, Ord)
@@ -158,7 +158,7 @@ instance Html BlockElem where --{{{2
         `append` authorText
         `append` "</span>\n</div>"
 
-    htmlify (Subdocument label elems) = do
+    htmlify (Group label elems) = do
       --for each block element in document, turn it to html and append a newline. after that, combine list into one Text.
       content <- forM elems (\x -> htmlify x >>= pure . append "\n") >>= pure . Text.concat
       pure $ "<div class=\"" `append` label `append` "\">\n" `append` content `append` "</div>"

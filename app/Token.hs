@@ -43,8 +43,8 @@ data Token = BeginTitle
            | LinkEnd
            | LinkSep
            | AssetRef
-           | BeginSubdocLabel
-           | EndSubdocLabel
+           | BeginGroupLabel
+           | EndGroupLabel
            | EndOfBlock 
            | TextChar
            deriving (Eq, Show, Ord)
