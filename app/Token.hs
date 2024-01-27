@@ -27,8 +27,8 @@ import qualified Text.Megaparsec.Stream
 
 
 --types {{{1
-data Token = BeginHeader
-           | BeginSubheader
+data Token = BeginTitle
+           | BeginSection
            | UnorderedListItem
            | BlockQuote
            | BlockQuoteAuthor

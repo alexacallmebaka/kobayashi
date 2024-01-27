@@ -56,13 +56,24 @@ instance Hashable InlineId
 
 --parse a nonempty file.
 stream :: Parser IR.Document
-stream = IR.Document <$> some blockElem <* eof
+stream = do
+  basicToken BeginTitle
+  title <- some inlineElem <* endOfBlock
+  anon <- many blockElem
+  sections <- many section
+  eof
+  pure . IR.Document title $ (IR.Section Nothing anon):sections
+
+section :: Parser IR.Section
+section = do
+  basicToken BeginSection
+  title <- some inlineElem <* endOfBlock
+  content <- many blockElem
+  pure . IR.Section (Just title) $ content
 
 blockElem :: Parser IR.BlockElem
 blockElem = choice [ paragraph
                    , image 
-                   , oneTokenBlock BeginHeader (\x -> IR.Header x)
-                   , oneTokenBlock BeginSubheader (\x -> IR.Subheader x)
                    , unorderedList
                    , blockQuote
                    , codeListing
@@ -128,27 +139,6 @@ unorderedListItem = do
   basicToken UnorderedListItem
   contents <- many inlineElem
   pure . IR.UnorderedListItem $ contents
-
---generic parser for blocks that begin with a single token and are ended by an
---EndOfBlock token.
-
-oneTokenBlock :: Token
-              -- ^^ token to begin block
-              -> ([IR.InlineElem] -> IR.BlockElem) 
-              --  ^^ type constructor that takes a list of inlines and returns a block.
-              -> Parser IR.BlockElem
-
-oneTokenBlock tok blockCon = do
-        --parse begin token
-        basicToken tok
-
-        --content is just a bunch of inlines (at least one)
-        content <- some inlineElem
-
-        --get block end
-        endOfBlock
-
-        pure . blockCon $ content
 
 --the end of a block can either be an EndOfBlock token or EOF
 endOfBlock :: Parser ()

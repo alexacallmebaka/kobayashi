@@ -95,33 +95,25 @@ listingMarker beginOrEnd = do
 
 --elements that act as block elements but functionally take up one line.
 psuedoBlock :: Parser [RichToken]
-psuedoBlock = choice [ psuedoBlockWithPrefix 
+psuedoBlock = choice [ titleMarker
+                     , secMarker
                      , subdocMarker
                      , image ]
 
-psuedoBlockWithPrefix :: Parser [RichToken]
-psuedoBlockWithPrefix = do
-    prefix <- psuedoBlockPrefix
-    (contents, eob) <- someTill_ inline (try endOfBlock)
-    pure $ [prefix] ++ (concat contents) ++ [eob]
+titleMarker :: Parser [RichToken]
+titleMarker = psuedoBlockWithMarker '#' BeginTitle
 
-psuedoBlockPrefix :: Parser RichToken
-psuedoBlockPrefix = choice
-    [ headerPrefix <?> "header or subheader"]
+secMarker :: Parser [RichToken]
+secMarker = psuedoBlockWithMarker '@' BeginSection
+  
+--elements of the form *contents where * is some marker.
+psuedoBlockWithMarker :: Char -> Token -> Parser [RichToken]
+psuedoBlockWithMarker mark tok = do
+  start <- basicInline mark tok
+  (contents, eob) <- manyTill_ inline singleEndOfBlock
+  pure $ [start] ++ (concat contents) ++ [eob]
 
---headers {{{2
 
-headerPrefix :: Parser RichToken
-headerPrefix = do
-    startPos <- getSourcePos
-    char '@'
-    tok <- option BeginHeader (BeginSubheader <$ char '@')
-    let txt = case tok of
-               BeginHeader -> "@"
-               BeginSubheader -> "@@"
-    pure $ RichToken startPos txt tok
-    
---2}}}
 
 image :: Parser [RichToken]
 image = do
@@ -147,13 +139,12 @@ subdocMarker = do
 --either a link or a single rich text car, we use singleton lists so types match up.
 --links are lexed separately to avoid reading in / as italic in the link source.
 inline :: Parser [RichToken]
-inline = try link <|> (richTextChar >>= (\x -> pure $ x:[]))
+inline = try link <|> try verb <|> (richTextChar >>= (\x -> pure $ x:[]))
 
 richTextChar :: Parser RichToken
 richTextChar = choice
     [ basicInline '*' Bold <?> "bold"
     , basicInline '/' Italic <?> "italic"
-    , basicInline '`' Verb <?> "verbatim"
     , textChar <?> "printable unicode char"]
 
 basicInline :: Char -> Token -> Parser RichToken
@@ -161,6 +152,12 @@ basicInline tokChar tok = do
     startPos <- getSourcePos
     txt <- char tokChar
     pure $ RichToken startPos (Text.singleton txt) tok
+
+verb :: Parser [RichToken]
+verb = do
+    start <- basicInline '`' Verb 
+    (text, end) <- manyTill_ plainChar (basicInline '`' Verb)
+    pure $ [start] ++ text ++ [end]
 
 link :: Parser [RichToken]
 link = do
@@ -193,6 +190,14 @@ richNewline = do
   startPos <- getSourcePos
   txt <- newline
   pure $ RichToken startPos (Text.singleton txt) TextChar
+
+--there are a couple times we want a single newline
+--to be treated as an end of block (title and section).
+singleEndOfBlock = do
+  startPos <- getSourcePos
+  txt <- newline
+  pure $ RichToken startPos "\\n" EndOfBlock
+
 
 endOfBlock :: Parser RichToken
 endOfBlock = do

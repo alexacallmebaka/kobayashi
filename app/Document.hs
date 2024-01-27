@@ -1,10 +1,18 @@
---kobayashi's flat intermediate representation.
+--kobayashi's intermediate representation.
+
+--prgamas {{{1
+
+--used to partially apply the MonadReader constraint to only types with "Options" as the environment type.
+{-# LANGUAGE FlexibleContexts #-}
+
+--1}}}
 
 --exports {{{1
 module Document
     (
       BlockElem(..)
     , Document(..)
+    , Section(..)
     , InlineElem(..)
     , UnorderedListItem (..)
     , Url (..)
@@ -14,19 +22,29 @@ module Document
 --imports {{{1
 import Control.Monad (forM)
 import Control.Monad.Reader (MonadReader, ask)
+import Data.Maybe (fromMaybe)
 import Data.Text (append, pack, Text, unpack)
 import Path (toFilePath)
 
 import Html (htmlFold, Html, htmlify, includeCss, meta, motd, Tag(..), wrap)
 import Options (Options(..))
 
+import qualified Data.Char as Char
 import qualified Data.Text as Text
 import qualified System.FilePath as SysPath
 --1}}}
 
 
 --types {{{1
-newtype Document = Document { unDocument :: [BlockElem] }
+data Document = Document 
+     { docTitle :: [InlineElem]
+     , docContents :: [Section] 
+     }
+
+data Section = Section
+     { secTitle :: Maybe [InlineElem]
+     , secContents :: [BlockElem]
+     }
 
 data Url = RemoteRef { refSrc :: Text }
          | PageRef { refSrc :: Text }
@@ -36,8 +54,6 @@ data Url = RemoteRef { refSrc :: Text }
 data UnorderedListItem = UnorderedListItem [InlineElem] deriving (Eq, Show, Ord)
 
 data BlockElem = Paragraph [InlineElem]
-               | Header [InlineElem]
-               | Subheader [InlineElem] 
                | UnorderedList [UnorderedListItem]
                --1st list is quote, 2nd is author.
                | BlockQuote [InlineElem] [InlineElem]
@@ -57,13 +73,45 @@ data InlineElem = Bold [InlineElem]
                 deriving (Eq, Show, Ord)
 --1}}}
 
+--utility functions for turning ir => html. {{{1
+
+--Get only textual compnents of Inline elements {{{2
+extractRawText :: InlineElem -> Text
+extractRawText (Verb txt) = txt
+extractRawText (PlainText txt) = txt
+extractRawText (Link title _ ) = Text.concat . map extractRawText $ title
+extractRawText ( Bold txt ) = Text.concat . map extractRawText $ txt
+extractRawText ( Italic txt ) = Text.concat . map extractRawText $ txt
+--2}}}
+
+--wrap HTML-encoded text in a section with a given title {{{2
+wrapInSec :: ( MonadReader Options r ) => Text -> [InlineElem] -> r Text
+wrapInSec content title = do
+    richSecTitle <- htmlFold title
+    let rawSecTitle = Text.concat . map extractRawText $ title
+    --for the id, only use acsii characters, replacing spaces with hyphens.
+    let secId = Text.replace " " "-" . Text.strip . Text.filter Char.isAscii $ rawSecTitle
+    pure
+      $ "<section id=\""
+      `append` secId
+      `append` "\">\n<h2>"
+      `append` richSecTitle
+      `append` "</h2>\n"
+      `append` content
+      `append` "</section>"
+--2}}}
+
+--1}}}
+
 --how to turn IR to html. {{{1
 
 instance Html Document where --{{{2
-  htmlify (Document elems) = do
+  htmlify (Document title sections) = do
       opts <- ask 
       --for each block element in document, turn it to html and append a newline. after that, combine list into one Text.
-      content <- forM elems (\x -> htmlify x >>= pure . append "\n") >>= pure . Text.concat
+      richPageTitle <- htmlFold title
+      let rawPageTitle = Text.concat . map extractRawText $ title
+      content <- forM sections (\x -> htmlify x >>= pure . append "\n") >>= pure . Text.concat
       css <- includeCss
       --combine everything for our final html page.
       pure
@@ -72,14 +120,25 @@ instance Html Document where --{{{2
         `append` "<head>\n" 
         `append` meta
         `append` css
-        `append`  "</head>\n<html>\n<body>\n" 
+        `append` "<title>"
+        `append` rawPageTitle
+        `append` "</title>\n"
+        `append` "</head>\n<html>\n<body>\n<h1>" 
+        `append` richPageTitle
+        `append` "</h1>\n"
         `append`  content 
         `append` "</body>\n</html>\n"
 --2}}}
 
+
+instance Html Section where --{{{2
+  htmlify (Section title elems) = do
+      content <- forM elems (\x -> htmlify x >>= pure . append "\n") >>= pure . Text.concat
+      maybe (pure content) (wrapInSec content) $ title
+
+--2}}}
+
 instance Html BlockElem where --{{{2
-    htmlify (Header inner) = wrap inner H1
-    htmlify (Subheader inner) = wrap inner H2
     htmlify (Paragraph inner) = wrap inner P
     htmlify (UnorderedList inner) = wrap inner UL
     htmlify (Image (AssetRef src)) = do
