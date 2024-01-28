@@ -163,12 +163,12 @@ link :: Parser [RichToken]
 link = do
     start <- basicInline '[' LinkStart
     --fail if early link end char.
-    (title, linkSep) <- manyTill_ ((char ']' >> (failure Nothing Set.empty)) <|> richTextChar) (basicInline '|' LinkSep)
+    (title, linkSep) <- manyTill_ ((char ']' >> (failure Nothing Set.empty)) <|> try verb <|> (richTextChar >>= \x -> pure [x]) ) (basicInline '|' LinkSep)
     maybeRefType <- optional (basicInline '$' AssetRef)
     (href, end) <- manyTill_ plainChar (basicInline ']' LinkEnd)
     case maybeRefType of
-      (Just refType) -> pure $ [start] ++ title ++ [linkSep] ++ [refType] ++ href ++ [end]
-      Nothing -> pure $ [start] ++ title ++ [linkSep] ++ href ++ [end]
+      (Just refType) -> pure $ [start] ++ (concat title) ++ [linkSep] ++ [refType] ++ href ++ [end]
+      Nothing -> pure $ [start] ++ (concat title) ++ [linkSep] ++ href ++ [end]
 
 --potentially escaped plaintext.
 textChar :: Parser RichToken
