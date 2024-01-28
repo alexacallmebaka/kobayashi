@@ -171,7 +171,7 @@ linkSource = do
     url <- Text.concat <$> some textCharNoSpace
     case maybeAssetRef of
       Just AssetRef -> pure . IR.AssetRef $ url
-      Nothing -> if ( any ( flip (Text.isPrefixOf) url ) $ ["/", "..", "."] )
+      Nothing -> if ( any ( flip (Text.isPrefixOf) url ) $ ["/", "..", ".", "#"] )
                     then pure . IR.PageRef $ url
                     else pure . IR.RemoteRef $ url
 
