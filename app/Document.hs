@@ -98,7 +98,7 @@ wrapInSec content title = do
       `append` richSecTitle
       `append` "</h2>\n"
       `append` content
-      `append` "</section>"
+      `append` "</section>\n"
 --2}}}
 
 --1}}}
@@ -113,7 +113,7 @@ instance Html Document where --{{{2
       let rawPageTitle = Text.concat . map extractRawText $ title
       --for the id, only use alphanum characters and hyphens, replacing spaces with hyphens.
       let pageId = Text.replace " " "-" . Text.toLower . Text.strip . Text.filter (\x -> Char.isAlphaNum x || Char.isSpace x) $ rawPageTitle
-      content <- forM sections (\x -> htmlify x >>= pure . append "\n") >>= pure . Text.concat
+      content <- forM sections htmlify >>= pure . Text.concat
       css <- includeCss
       --combine everything for our final html page.
       pure
@@ -131,13 +131,13 @@ instance Html Document where --{{{2
         `append` richPageTitle
         `append` "</h1>\n"
         `append`  content 
-        `append` "</article></body>\n</html>\n"
+        `append` "</article>\n</body>\n</html>\n"
 --2}}}
 
 
 instance Html Section where --{{{2
   htmlify (Section title elems) = do
-      content <- forM elems (\x -> htmlify x >>= pure . append "\n") >>= pure . Text.concat
+      content <- forM elems (\x -> htmlify x >>= pure . (flip append "\n")) >>= pure . Text.concat
       maybe (pure content) (wrapInSec content) $ title
 
 --2}}}
@@ -164,7 +164,7 @@ instance Html BlockElem where --{{{2
 
     htmlify (Group label elems) = do
       --for each block element in document, turn it to html and append a newline. after that, combine list into one Text.
-      content <- forM elems (\x -> htmlify x >>= pure . append "\n") >>= pure . Text.concat
+      content <- forM elems (\x -> htmlify x >>= pure . (flip append "\n")) >>= pure . Text.concat
       pure $ "<div class=\"" `append` label `append` "\">\n" `append` content `append` "</div>"
       
 --2}}}
