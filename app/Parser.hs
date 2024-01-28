@@ -45,6 +45,7 @@ type Parser = Parsec Void TokenStream
 data InlineId = PlainId
               | BoldId
               | ItalicId
+              | VerbId
               | LinkId deriving (Eq, Generic)
 
 --use ghc's generics to make the inlineId's hashable.
@@ -203,9 +204,10 @@ plainText = IR.PlainText . Text.concat <$> some textChar
 --containing " is bold".
 basicInlineChoices :: HM.HashMap InlineId (Parser IR.InlineElem)
 basicInlineChoices = HM.fromList [ (BoldId, wrapsText (\x -> IR.Bold x) Bold BoldId)
-                            , (ItalicId, wrapsText (\x -> IR.Italic x) Italic ItalicId)
-                            , (PlainId, plainText)
-                            , (LinkId, link) ]
+                                 , (ItalicId, wrapsText (\x -> IR.Italic x) Italic ItalicId)
+                                 , (PlainId, plainText)
+                                 , (LinkId, link)
+                                 , (VerbId, verb) ]
 
 --simply choose an inline elem to parse from a given hashmap.
 basicInlineElem :: HM.HashMap InlineId (Parser IR.InlineElem) -> Parser IR.InlineElem
