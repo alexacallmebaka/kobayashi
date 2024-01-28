@@ -162,7 +162,7 @@ verb = do
 link :: Parser [RichToken]
 link = do
     start <- basicInline '[' LinkStart
-    --fail if early link end char.
+    --fail if early link end char, chars need to be in singleton lists for types to check.
     (title, linkSep) <- manyTill_ ((char ']' >> (failure Nothing Set.empty)) <|> try verb <|> (richTextChar >>= \x -> pure [x]) ) (basicInline '|' LinkSep)
     maybeRefType <- optional (basicInline '$' AssetRef)
     (href, end) <- manyTill_ plainChar (basicInline ']' LinkEnd)
