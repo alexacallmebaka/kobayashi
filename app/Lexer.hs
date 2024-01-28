@@ -55,6 +55,7 @@ unorderedList = do
 
 unorderedListItem :: Parser [RichToken]
 unorderedListItem =  do
+  space
   bullet <- basicInline '-' UnorderedListItem
   space
   contents <- someTill inline (try eol)
