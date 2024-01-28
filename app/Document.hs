@@ -75,7 +75,16 @@ data InlineElem = Bold [InlineElem]
 
 --utility functions for turning ir => html. {{{1
 
---Get only textual compnents of Inline elements {{{2
+--use html entities to make text safe. quite inefficient asymptotically but should be okay for now. {{{2
+makeSafe :: Text -> Text
+makeSafe = Text.replace "<" "&lt;" 
+         . Text.replace ">" "&gt;"
+         . Text.replace "\"" "&quot;"
+         . Text.replace "'" "&apos;"
+         . Text.replace "&" "&amp;"
+--2}}}
+
+--Get only textual components of Inline elements {{{2
 extractRawText :: InlineElem -> Text
 extractRawText (Verb txt) = txt
 extractRawText (PlainText txt) = txt
@@ -151,7 +160,7 @@ instance Html BlockElem where --{{{2
       let assetPath = pack . SysPath.makeRelative "/" . unpack $ src
       pure $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\" />"
     htmlify (Image (RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\" />"
-    htmlify (CodeListing text) = pure $ "<pre class=\"code\">\n" `append` text `append` "\n</pre>"
+    htmlify (CodeListing text) = pure $ "<pre class=\"code\">\n" `append` (makeSafe text) `append` "\n</pre>"
     htmlify (BlockQuote quote author) = do
       quoteText <- htmlFold quote
       authorText <- htmlFold author
@@ -172,8 +181,8 @@ instance Html BlockElem where --{{{2
 instance Html InlineElem where --{{{2
     htmlify (Bold inner) = wrap inner Strong
     htmlify (Italic inner) = wrap inner Em
-    htmlify (Verb inner) = pure $ "<code>" `append` inner `append` "</code>"
-    htmlify (PlainText inner) = pure $ inner 
+    htmlify (Verb inner) = pure $ "<code>" `append` (makeSafe inner) `append` "</code>"
+    htmlify (PlainText inner) = pure . makeSafe $ inner 
 
     htmlify (Link title (PageRef url)) =  do
       titleText <- htmlFold title
