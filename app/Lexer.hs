@@ -82,7 +82,7 @@ codeListing :: Parser [RichToken]
 codeListing = do
   start <- listingMarker BeginCodeListing
   eol
-  (contents,end) <- someTill_ (plainChar <|> richNewline) (listingMarker EndCodeListing)
+  (contents,end) <- someTill_ ( (try $ escapedChar '`') <|> plainChar <|> richNewline) (listingMarker EndCodeListing)
   eob <- endOfBlock
   pure $ [start] ++ contents ++ [end] ++ [eob]
 
@@ -199,6 +199,14 @@ singleEndOfBlock = do
   txt <- newline
   pure $ RichToken startPos "\\n" EndOfBlock
 
+--parse a specific escaped char 
+escapedChar :: Char -> Parser RichToken
+escapedChar c = do
+  startPos <- getSourcePos
+  char '\\'
+  lexeme <- char c
+  pure $ RichToken startPos (Text.singleton lexeme) TextChar
+   
 
 endOfBlock :: Parser RichToken
 endOfBlock = do
