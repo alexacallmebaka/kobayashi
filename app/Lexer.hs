@@ -157,7 +157,7 @@ basicInline tokChar tok = do
 verb :: Parser [RichToken]
 verb = do
     start <- basicInline '`' Verb 
-    (text, end) <- manyTill_ plainChar (basicInline '`' Verb)
+    (text, end) <- manyTill_ ( (try $ escapedChar '`') <|> plainChar ) (basicInline '`' Verb)
     pure $ [start] ++ text ++ [end]
 
 link :: Parser [RichToken]
