@@ -160,7 +160,7 @@ instance Html BlockElem where --{{{2
       let assetPath = pack . SysPath.makeRelative "/" . unpack $ src
       pure $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\" />"
     htmlify (Image (RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\" />"
-    htmlify (CodeListing text) = pure $ "<pre class=\"listing\">\n" `append` (makeSafe text) `append` "\n</pre>"
+    htmlify (CodeListing text) = pure $ "<pre>\n<code>\n" `append` (makeSafe text) `append` "\n</code>\n</pre>"
     htmlify (BlockQuote quote author) = do
       quoteText <- htmlFold quote
       authorText <- htmlFold author
