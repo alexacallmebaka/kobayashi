@@ -14,7 +14,7 @@ import Control.Monad.Combinators (choice, manyTill_, option, some, someTill_, so
 import Data.Text (Text, pack)
 import Data.Void (Void)
 import Text.Megaparsec (eof, errorBundlePretty, failure, getSourcePos, try, Parsec, runParser, (<?>))
-import Text.Megaparsec.Char (char, eol, newline, printChar, string, space)
+import Text.Megaparsec.Char (alphaNumChar, char, eol, newline, printChar, string, space)
 import Token (Token(..), TokenStream(..), RichToken(..))
 
 import qualified Data.Text as Text
@@ -82,7 +82,7 @@ codeListing :: Parser [RichToken]
 codeListing = do
   start <- listingMarker BeginCodeListing
   eol
-  (contents,end) <- someTill_ ( (try $ escapedChar '`') <|> plainChar <|> richNewline) (listingMarker EndCodeListing)
+  (contents,end) <- someTill_ ( codeChar <|> richNewline) (listingMarker EndCodeListing)
   eob <- endOfBlock
   pure $ [start] ++ contents ++ [end] ++ [eob]
 
@@ -129,7 +129,7 @@ image = do
 groupMarker :: Parser [RichToken]
 groupMarker = do
   start <- basicInline '{' BeginGroupLabel
-  (content, end) <- someTill_ plainChar (try (basicInline '}' EndGroupLabel))
+  (content, end) <- someTill_ groupMarkerChar (try (basicInline '}' EndGroupLabel))
   eol 
   pure $ [start] ++ content ++ [end]
 
@@ -157,7 +157,7 @@ basicInline tokChar tok = do
 verb :: Parser [RichToken]
 verb = do
     start <- basicInline '`' Verb 
-    (text, end) <- manyTill_ ( (try $ escapedChar '`') <|> plainChar ) (basicInline '`' Verb)
+    (text, end) <- manyTill_ codeChar (basicInline '`' Verb)
     pure $ [start] ++ text ++ [end]
 
 link :: Parser [RichToken]
@@ -170,6 +170,17 @@ link = do
     case maybeRefType of
       (Just refType) -> pure $ [start] ++ (concat title) ++ [linkSep] ++ [refType] ++ href ++ [end]
       Nothing -> pure $ [start] ++ (concat title) ++ [linkSep] ++ href ++ [end]
+
+--char for code listings and verb.
+codeChar :: Parser RichToken
+codeChar = (try $ escapedChar '\\') <|> (try $ escapedChar '`') <|> plainChar
+
+--valid char for group marker.
+groupMarkerChar :: Parser RichToken
+groupMarkerChar = do
+    startPos <- getSourcePos
+    txt <- alphaNumChar <|> (char '-') <|> (char '_')
+    pure $ RichToken startPos (Text.singleton txt) TextChar
 
 --potentially escaped plaintext.
 textChar :: Parser RichToken
