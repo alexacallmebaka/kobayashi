@@ -156,6 +156,7 @@ basicToken :: Token -> Parser Token
 basicToken tok = token test Set.empty
     where test ( RichToken _ _ t ) = if t == tok then Just t else Nothing
 
+--TODO: links can technically contain either links which is weird and i should fix it.
 link :: Parser IR.InlineElem
 link = do
     basicToken LinkStart
