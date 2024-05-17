@@ -139,7 +139,7 @@ includeNavbar = do
   case oNavbar opts of
     [] -> pure ""
     navbar -> do
-      contents <- forM navbar (\x -> htmlify x >>= pure . (flip append " |\n")) >>= pure . Text.concat
+      contents <- forM navbar (\x -> htmlify x >>= pure . (flip append "\n")) >>= pure . Text.concat
       pure $ "<nav>\n" `append` contents `append` "</nav>"
 
 
