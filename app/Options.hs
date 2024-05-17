@@ -62,9 +62,10 @@ instance Show Options where --{{{2
                      ++ "\nAssets Directory: " ++ (show oAssetsDir)
                      ++ "\nPath to CSS: " ++ (show oCssPath)
                      ++ "\nPath to Favicon: " ++ (show oFaviconPath)
+                     ++ "\nNavbar: "
                      ++ case oNavbar of
-                          [] -> "\nNo navbar!"
-                          _ -> "\nNavbar configured."
+                          [] -> "No"
+                          _ -> "Yes"
 --2}}}
 
 {- monoid used to build Options. 
@@ -132,10 +133,18 @@ navbarLinkCodec = Toml.dimatch matchLink (uncurry Link) $ Toml.pair
 
 --utility functions {{{1
 
+--stuff for parsing kby in navbar {{{2
+
+--match function for Link IR element. Needed for TOML.dimatch.
+--see Tomland docs for why we need this: 
+--https://hackage.haskell.org/package/tomland-1.3.3.2/docs/Toml-Codec-Di.html#v:dimatch
 matchLink :: InlineElem -> Maybe ([InlineElem], Url)
 matchLink (Link title url) = Just (title, url)
 matchLink _ = Nothing
 
+--small lexer to handle the "src" portion of navbar links.
+--had to pull this out instead of using something from the Lexer module
+--as lexing urls depends on in ending token there (i.e. lex a url until you see a ] for links).
 lexHref :: Parser [Token.RichToken]
 lexHref = do
     maybeRefType <- optional (basicInline '$' Token.AssetRef)
@@ -144,6 +153,9 @@ lexHref = do
       (Just refType) -> pure $ [refType] ++ href
       Nothing -> pure href
 
+--helper function to parse inline kby. cant bind here because error types produced by parser and lexer are slightly different.
+--future work may be to clean this code up, but works for now.
+--also note that we have to pack list of tokens from lexer in a tokenstream, since inline is a intermediate lexer from the Lexer module.
 parseKbyInlineElems :: Text -> Either Text [InlineElem]
 parseKbyInlineElems kby = case (runParser (many inline) "toml config" kby) of
                             Left err -> Left . pack . errorBundlePretty $ err
@@ -152,13 +164,14 @@ parseKbyInlineElems kby = case (runParser (many inline) "toml config" kby) of
                                         Right title -> Right title
 
 
---need this to use a link lexer
+--helper function to parse urls. see notes on parsing inline elements, as most of that applies here too.
 parseKbyUrl :: Text -> Either Text Url
 parseKbyUrl kby  = case (runParser lexHref "toml config" kby) of
                             Left err -> Left . pack . errorBundlePretty $ err
                             Right tokens -> case ( runParser linkSource "toml config" (Token.TokenStream tokens) ) of 
                                       Left err -> Left . pack . errorBundlePretty $ err
                                       Right url -> Right url
+--2}}}
 
 {- utility functions that convert Text into Path types. {{{2
 all of the Path.parse* functions return values wrapped in a member of
@@ -230,6 +243,7 @@ makeOptions PartialOptions {..} = do
   pure Options {..}
 --2}}}
 
+--default navbar is an empty list, this will be interpreted as no navbar by the builder.
 defaultPartialOptions :: PartialOptions --{{{2
 defaultPartialOptions = PartialOptions
   { poBuildDir = pure [reldir|build|]
