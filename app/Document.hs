@@ -16,15 +16,12 @@ module Document
     , InlineElem(..)
     , UnorderedListItem (..)
     , Url (..)
-    , NavbarItem(..)
-    , Navbar(..)
     ) where
 --1}}}
 
 --imports {{{1
 import Data.Text (append, pack, Text, unpack)
 --1}}}
-
 
 --types {{{1
 data Document = Document 
@@ -41,13 +38,6 @@ data Url = RemoteRef { refSrc :: Text }
          | PageRef { refSrc :: Text }
          | AssetRef { refSrc :: Text }
          deriving (Eq, Show, Ord)
-
-data NavbarItem = NavbarItem
-     { itemTitle :: [InlineElem]
-     , itemSrc :: Url
-     }
-
-data Navbar = Navbar [NavbarItem]
 
 data UnorderedListItem = UnorderedListItem [InlineElem] deriving (Eq, Show, Ord)
 

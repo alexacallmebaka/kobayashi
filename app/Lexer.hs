@@ -3,7 +3,8 @@
 --exports {{{1
 module Lexer 
   (
-    tokenize
+    tokenize,
+    file
   ) where
 --1}}}
 
