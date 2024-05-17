@@ -3,8 +3,11 @@
 --exports {{{1
 module Lexer 
   (
+    basicInline,
+    inline,
+    Parser,
+    plainChar,
     tokenize,
-    file
   ) where
 --1}}}
 

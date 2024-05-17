@@ -133,6 +133,16 @@ includeFavicon = do
   pure $ "<link rel=\"icon\" type=\"image/x-icon\" href=\"" `append` faviconPath `append` "\" />\n"
 --2}}}
 
+includeNavbar :: (MonadReader Options r) => r Text --{{{2
+includeNavbar = do
+  opts <- ask
+  case oNavbar opts of
+    [] -> pure ""
+    navbar -> do
+      contents <- forM navbar (\x -> htmlify x >>= pure . (flip append " |\n")) >>= pure . Text.concat
+      pure $ "<nav>\n" `append` contents `append` "</nav>"
+
+
 --comment to add some flair.
 motd :: Text --{{{2
 motd = "<!--Made with ❤️ using Kobayashi: https://github.com/alexacallmebaka/kobayashi-->\n"
@@ -197,6 +207,7 @@ instance Html IR.Document where --{{{2
       content <- forM sections htmlify >>= pure . Text.concat
       css <- includeCss
       favicon <- includeFavicon
+      navbar <- includeNavbar
       --combine everything for our final html page.
       pure
         $ "<!DOCTYPE HTML>\n" 
@@ -213,6 +224,7 @@ instance Html IR.Document where --{{{2
         `append` "\">\n<h1>" 
         `append` richPageTitle
         `append` "</h1>\n"
+        `append` navbar
         `append`  content 
         `append` "</article>\n</body>\n</html>\n"
 --2}}}

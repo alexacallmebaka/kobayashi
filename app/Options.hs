@@ -26,13 +26,13 @@ module Options
 
 --imports {{{1
 import Data.Text (Text, pack, unpack, append)
-import Text.Megaparsec (many, parseMaybe)
+import Text.Megaparsec (errorBundlePretty, many, optional, runParser)
 import Path (absdir, absfile, Abs, Dir, File,  Path, Rel, reldir, (</>))
 import Toml (TomlCodec, TomlDecodeError, (.=))
 
 import Document (InlineElem(..), Url(..))
-import Error (ErrorMsg)
-import Lexer (file)
+import Error (ErrorMsg, BuildError(..))
+import Lexer (basicInline, inline, Parser, plainChar)
 import Parser (inlineElem, linkSource)
 
 import qualified Data.Map as Map
@@ -40,6 +40,8 @@ import qualified Data.Monoid as Monoid
 import qualified Path
 import qualified System.FilePath as SysPath
 import qualified Toml
+
+import qualified Token as Token
 --1}}}
 
 --Options and PartialOptions data types and typeclass instances. {{{1 
@@ -60,6 +62,9 @@ instance Show Options where --{{{2
                      ++ "\nAssets Directory: " ++ (show oAssetsDir)
                      ++ "\nPath to CSS: " ++ (show oCssPath)
                      ++ "\nPath to Favicon: " ++ (show oFaviconPath)
+                     ++ case oNavbar of
+                          [] -> "\nNo navbar!"
+                          _ -> "\nNavbar configured."
 --2}}}
 
 {- monoid used to build Options. 
@@ -131,17 +136,29 @@ matchLink :: InlineElem -> Maybe ([InlineElem], Url)
 matchLink (Link title url) = Just (title, url)
 matchLink _ = Nothing
 
+lexHref :: Parser [Token.RichToken]
+lexHref = do
+    maybeRefType <- optional (basicInline '$' Token.AssetRef)
+    href <- many plainChar
+    case maybeRefType of
+      (Just refType) -> pure $ [refType] ++ href
+      Nothing -> pure href
+
 parseKbyInlineElems :: Text -> Either Text [InlineElem]
-parseKbyInlineElems kby = maybe
-                      (Left $ "Invalid Kby: " `append` kby)
-                      Right
-                      ( (parseMaybe file kby) >>= ( parseMaybe (many inlineElem) ) )
-    
+parseKbyInlineElems kby = case (runParser (many inline) "toml config" kby) of
+                            Left err -> Left . pack . errorBundlePretty $ err
+                            Right tokens -> case ( runParser (many inlineElem) "toml config" (Token.TokenStream . concat $ tokens) ) of
+                                        Left err -> Left . pack . errorBundlePretty $ err
+                                        Right title -> Right title
+
+
+--need this to use a link lexer
 parseKbyUrl :: Text -> Either Text Url
-parseKbyUrl url = maybe
-                (Left $ "Invalid url: " `append` url)
-                Right
-                ( (parseMaybe file url) >>= (parseMaybe linkSource) )
+parseKbyUrl kby  = case (runParser lexHref "toml config" kby) of
+                            Left err -> Left . pack . errorBundlePretty $ err
+                            Right tokens -> case ( runParser linkSource "toml config" (Token.TokenStream tokens) ) of 
+                                      Left err -> Left . pack . errorBundlePretty $ err
+                                      Right url -> Right url
 
 {- utility functions that convert Text into Path types. {{{2
 all of the Path.parse* functions return values wrapped in a member of
@@ -219,7 +236,7 @@ defaultPartialOptions = PartialOptions
   , poAssetsDir = pure [absdir|/media|]
   , poCssPath = pure $ [absfile|/style.css|]
   , poFaviconPath = pure $ [absfile|/favicon.ico|]
-  , poNavbar = mempty
+  , poNavbar = pure []
   }
 --2}}}
 

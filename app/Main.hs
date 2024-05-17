@@ -145,6 +145,7 @@ main = do --{{{1
 
             --if there was an error creating options, print it and exit.
             Left err -> do
+              print tomlOpts
               TIO.putStrLn "[INPUT ERROR]\nError(s) in configuration:"
               print err
 --1}}}
