@@ -45,6 +45,7 @@ data Options = Options --{{{2
   { oBuildDir :: Path Rel Dir
   , oAssetsDir :: Path Abs Dir
   , oCssPath :: Path Abs File
+  , oFaviconPath :: Path Abs File
   } deriving (Eq)
 --2}}}
 
@@ -53,6 +54,7 @@ instance Show Options where --{{{2
   show Options{..} = "[Current Configuration]\nBuild Directory: " ++ (show oBuildDir)
                      ++ "\nAssets Directory: " ++ (show oAssetsDir)
                      ++ "\nPath to CSS: " ++ (show oCssPath)
+                     ++ "\nPath to Favicon: " ++ (show oFaviconPath)
 --2}}}
 
 {- monoid used to build Options. 
@@ -63,6 +65,7 @@ data PartialOptions = PartialOptions --{{{2
   { poBuildDir :: Monoid.Last (Path Rel Dir)
   , poAssetsDir :: Monoid.Last (Path Abs Dir)
   , poCssPath :: Monoid.Last (Path Abs File)
+  , poFaviconPath :: Monoid.Last (Path Abs File)
   } deriving (Show, Eq)
 --2}}}
 
@@ -75,12 +78,13 @@ instance Semigroup PartialOptions where --{{{2
     { poBuildDir = poBuildDir lhs <> poBuildDir rhs
     , poAssetsDir = poAssetsDir lhs <> poAssetsDir rhs
     , poCssPath = poCssPath lhs <> poCssPath rhs
+    , poFaviconPath = poFaviconPath lhs <> poFaviconPath rhs
     }
 --2}}}
 
 --for the Monoid instance is trivial since each field is already a monoid
 instance Monoid PartialOptions where --{{{2
-  mempty = PartialOptions mempty mempty mempty
+  mempty = PartialOptions mempty mempty mempty mempty
 --2}}}
 
 --1}}}
@@ -103,6 +107,7 @@ partialOptionsCodec = PartialOptions
   <$> Toml.last ( Toml.textBy pathToText textToRelDir ) "build_dir" .= poBuildDir
   <*> Toml.last ( Toml.textBy pathToText textToAbsDir ) "assets_dir" .= poAssetsDir
   <*> Toml.last ( Toml.textBy pathToText textToAbsFile ) "css_path" .= poCssPath
+  <*> Toml.last ( Toml.textBy pathToText textToAbsFile ) "favicon_path" .= poFaviconPath
 --2}}}
 
 --1}}}
@@ -174,6 +179,7 @@ makeOptions PartialOptions {..} = do
   oBuildDir <- lastToEither "Missing build directory" poBuildDir
   oAssetsDir <- lastToEither "Missing assets directory" poAssetsDir
   oCssPath <- lastToEither "Missing path to Css." poCssPath
+  oFaviconPath <- lastToEither "Missing path to Favicon." poFaviconPath
   pure Options {..}
 --2}}}
 
@@ -182,6 +188,7 @@ defaultPartialOptions = PartialOptions
   { poBuildDir = pure [reldir|build|]
   , poAssetsDir = pure [absdir|/media|]
   , poCssPath = pure $ [absfile|/style.css|]
+  , poFaviconPath = pure $ [absfile|/favicon.ico|]
   }
 --2}}}
 

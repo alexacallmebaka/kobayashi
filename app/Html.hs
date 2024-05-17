@@ -19,6 +19,7 @@ module Html
     , meta
     , motd
     , includeCss
+    , includeFavicon
 
     , genTags
     , htmlFold
@@ -116,6 +117,14 @@ includeCss = do
   opts <- ask
   let cssPath = pack . toFilePath . oCssPath $ opts
   pure $ "<link rel=\"stylesheet\" href=\"" `append` cssPath `append` "\" />\n"
+--2}}}
+
+--generate a tag to include favicon.
+includeFavicon :: (MonadReader Options r) => r Text --{{{2
+includeFavicon = do
+  opts <- ask
+  let faviconPath = pack . toFilePath . oFaviconPath $ opts
+  pure $ "<link rel=\"icon\" type=\"image/x-icon\" href=\"" `append` faviconPath `append` "\" />\n"
 --2}}}
 
 --comment to add some flair.

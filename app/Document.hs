@@ -26,7 +26,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (append, pack, Text, unpack)
 import Path (toFilePath)
 
-import Html (htmlFold, Html, htmlify, includeCss, meta, motd, Tag(..), wrap)
+import Html (htmlFold, Html, htmlify, includeCss, includeFavicon, meta, motd, Tag(..), wrap)
 import Options (Options(..))
 
 import qualified Data.Char as Char
@@ -124,6 +124,7 @@ instance Html Document where --{{{2
       let pageId = Text.replace " " "-" . Text.toLower . Text.strip . Text.filter (\x -> Char.isAlphaNum x || Char.isSpace x) $ rawPageTitle
       content <- forM sections htmlify >>= pure . Text.concat
       css <- includeCss
+      favicon <- includeFavicon
       --combine everything for our final html page.
       pure
         $ "<!DOCTYPE HTML>\n" 
@@ -131,6 +132,7 @@ instance Html Document where --{{{2
         `append` "<head>\n" 
         `append` meta
         `append` css
+        `append` favicon
         `append` "<title>"
         `append` rawPageTitle
         `append` "</title>\n"
