@@ -130,7 +130,9 @@ includeFavicon :: (MonadReader Options r) => r Text --{{{2
 includeFavicon = do
   opts <- ask
   let faviconPath = pack . toFilePath . oFaviconPath $ opts
-  pure $ "<link rel=\"icon\" type=\"image/x-icon\" href=\"" `append` faviconPath `append` "\" />\n"
+  pure 
+    $ "<link rel=\"icon\" type=\"image/x-icon\" href=\"" `append` faviconPath `append` "\" />\n"
+    `append` "<link rel=\"shortcut icon\" type=\"image/x-icon\" href=\"" `append` faviconPath `append` "\" />\n"
 --2}}}
 
 includeNavbar :: (MonadReader Options r) => r Text --{{{2
