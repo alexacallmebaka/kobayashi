@@ -139,8 +139,9 @@ includeNavbar = do
   case oNavbar opts of
     [] -> pure ""
     navbar -> do
-      contents <- forM navbar (\x -> htmlify x >>= pure . (flip append "\n")) >>= pure . Text.concat
-      pure $ "<nav>\n" `append` contents `append` "</nav>"
+      --this is a sloppy solution, but i was having trouble with tomland making an ordered list from toml.
+      contents <- forM navbar (\x -> htmlify x >>= pure . (flip append "</li>\n") . (append "<li>")) >>= pure . Text.concat
+      pure $ "<nav>\n<ul>\n" `append` contents `append` "</ul>\n</nav>"
 
 
 --comment to add some flair.
