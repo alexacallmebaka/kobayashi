@@ -48,7 +48,7 @@ executable kobayashi
                       MultiParamTypeClasses,
                       FlexibleContexts
 
-    -- no version contrsints, we just let cabal figure things out.
+    -- no version constraints, we just let cabal figure things out.
     build-depends:    base,
                       megaparsec,
                       filepath,
