@@ -26,16 +26,22 @@ module Options
 
 --imports {{{1
 import Data.Text (Text, pack, unpack, append)
+import Text.Megaparsec (errorBundlePretty, many, optional, runParser)
 import Path (absdir, absfile, Abs, Dir, File,  Path, Rel, reldir, (</>))
 import Toml (TomlCodec, TomlDecodeError, (.=))
 
-import Error (ErrorMsg)
+import Document (InlineElem(..), Url(..))
+import Error (ErrorMsg, BuildError(..))
+import Lexer (basicInline, inline, Parser, plainChar)
+import Parser (inlineElem, linkSource)
 
 import qualified Data.Map as Map
 import qualified Data.Monoid as Monoid
 import qualified Path
 import qualified System.FilePath as SysPath
 import qualified Toml
+
+import qualified Token as Token
 --1}}}
 
 --Options and PartialOptions data types and typeclass instances. {{{1 
@@ -45,6 +51,8 @@ data Options = Options --{{{2
   { oBuildDir :: Path Rel Dir
   , oAssetsDir :: Path Abs Dir
   , oCssPath :: Path Abs File
+  , oFaviconPath :: Path Abs File
+  , oNavbar :: [InlineElem]
   } deriving (Eq)
 --2}}}
 
@@ -53,6 +61,11 @@ instance Show Options where --{{{2
   show Options{..} = "[Current Configuration]\nBuild Directory: " ++ (show oBuildDir)
                      ++ "\nAssets Directory: " ++ (show oAssetsDir)
                      ++ "\nPath to CSS: " ++ (show oCssPath)
+                     ++ "\nPath to Favicon: " ++ (show oFaviconPath)
+                     ++ "\nNavbar: "
+                     ++ case oNavbar of
+                          [] -> "No"
+                          _ -> "Yes"
 --2}}}
 
 {- monoid used to build Options. 
@@ -63,6 +76,8 @@ data PartialOptions = PartialOptions --{{{2
   { poBuildDir :: Monoid.Last (Path Rel Dir)
   , poAssetsDir :: Monoid.Last (Path Abs Dir)
   , poCssPath :: Monoid.Last (Path Abs File)
+  , poFaviconPath :: Monoid.Last (Path Abs File)
+  , poNavbar :: Monoid.Last ([InlineElem])
   } deriving (Show, Eq)
 --2}}}
 
@@ -75,12 +90,14 @@ instance Semigroup PartialOptions where --{{{2
     { poBuildDir = poBuildDir lhs <> poBuildDir rhs
     , poAssetsDir = poAssetsDir lhs <> poAssetsDir rhs
     , poCssPath = poCssPath lhs <> poCssPath rhs
+    , poFaviconPath = poFaviconPath lhs <> poFaviconPath rhs
+    , poNavbar = poNavbar lhs <> poNavbar rhs
     }
 --2}}}
 
 --for the Monoid instance is trivial since each field is already a monoid
 instance Monoid PartialOptions where --{{{2
-  mempty = PartialOptions mempty mempty mempty
+  mempty = PartialOptions mempty mempty mempty mempty mempty
 --2}}}
 
 --1}}}
@@ -103,11 +120,58 @@ partialOptionsCodec = PartialOptions
   <$> Toml.last ( Toml.textBy pathToText textToRelDir ) "build_dir" .= poBuildDir
   <*> Toml.last ( Toml.textBy pathToText textToAbsDir ) "assets_dir" .= poAssetsDir
   <*> Toml.last ( Toml.textBy pathToText textToAbsFile ) "css_path" .= poCssPath
+  <*> Toml.last ( Toml.textBy pathToText textToAbsFile ) "favicon_path" .= poFaviconPath
+  <*> Toml.last ( Toml.list navbarLinkCodec ) "navbar" .= poNavbar
 --2}}}
+
+navbarLinkCodec :: TomlCodec InlineElem
+navbarLinkCodec = Toml.dimatch matchLink (uncurry Link) $ Toml.pair
+  ( ( Toml.textBy (pack . show) parseKbyInlineElems ) "name" )
+  ( ( Toml.textBy (pack . show) parseKbyUrl ) "src" )
 
 --1}}}
 
 --utility functions {{{1
+
+--stuff for parsing kby in navbar {{{2
+
+--match function for Link IR element. Needed for TOML.dimatch.
+--see Tomland docs for why we need this: 
+--https://hackage.haskell.org/package/tomland-1.3.3.2/docs/Toml-Codec-Di.html#v:dimatch
+matchLink :: InlineElem -> Maybe ([InlineElem], Url)
+matchLink (Link title url) = Just (title, url)
+matchLink _ = Nothing
+
+--small lexer to handle the "src" portion of navbar links.
+--had to pull this out instead of using something from the Lexer module
+--as lexing urls depends on in ending token there (i.e. lex a url until you see a ] for links).
+lexHref :: Parser [Token.RichToken]
+lexHref = do
+    maybeRefType <- optional (basicInline '$' Token.AssetRef)
+    href <- many plainChar
+    case maybeRefType of
+      (Just refType) -> pure $ [refType] ++ href
+      Nothing -> pure href
+
+--helper function to parse inline kby. cant bind here because error types produced by parser and lexer are slightly different.
+--future work may be to clean this code up, but works for now.
+--also note that we have to pack list of tokens from lexer in a tokenstream, since inline is a intermediate lexer from the Lexer module.
+parseKbyInlineElems :: Text -> Either Text [InlineElem]
+parseKbyInlineElems kby = case (runParser (many inline) "toml config" kby) of
+                            Left err -> Left . pack . errorBundlePretty $ err
+                            Right tokens -> case ( runParser (many inlineElem) "toml config" (Token.TokenStream . concat $ tokens) ) of
+                                        Left err -> Left . pack . errorBundlePretty $ err
+                                        Right title -> Right title
+
+
+--helper function to parse urls. see notes on parsing inline elements, as most of that applies here too.
+parseKbyUrl :: Text -> Either Text Url
+parseKbyUrl kby  = case (runParser lexHref "toml config" kby) of
+                            Left err -> Left . pack . errorBundlePretty $ err
+                            Right tokens -> case ( runParser linkSource "toml config" (Token.TokenStream tokens) ) of 
+                                      Left err -> Left . pack . errorBundlePretty $ err
+                                      Right url -> Right url
+--2}}}
 
 {- utility functions that convert Text into Path types. {{{2
 all of the Path.parse* functions return values wrapped in a member of
@@ -174,14 +238,19 @@ makeOptions PartialOptions {..} = do
   oBuildDir <- lastToEither "Missing build directory" poBuildDir
   oAssetsDir <- lastToEither "Missing assets directory" poAssetsDir
   oCssPath <- lastToEither "Missing path to Css." poCssPath
+  oFaviconPath <- lastToEither "Missing path to Favicon." poFaviconPath
+  oNavbar <- lastToEither "Missing navbar config." poNavbar
   pure Options {..}
 --2}}}
 
+--default navbar is an empty list, this will be interpreted as no navbar by the builder.
 defaultPartialOptions :: PartialOptions --{{{2
 defaultPartialOptions = PartialOptions
   { poBuildDir = pure [reldir|build|]
   , poAssetsDir = pure [absdir|/media|]
   , poCssPath = pure $ [absfile|/style.css|]
+  , poFaviconPath = pure $ [absfile|/favicon.ico|]
+  , poNavbar = pure []
   }
 --2}}}
 

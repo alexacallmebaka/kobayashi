@@ -10,7 +10,9 @@
 --exports {{{1
 module Parser 
         (
-          parseTokens
+          parseTokens,
+          inlineElem,
+          linkSource
         ) where
 --1}}}
 
