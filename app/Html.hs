@@ -144,7 +144,20 @@ includeNavbar = do
       --this is a sloppy solution, but i was having trouble with tomland making an ordered list from toml.
       contents <- forM navbar (\x -> htmlify x >>= pure . (flip append "</li>\n") . (append "<li>")) >>= pure . Text.concat
       pure $ "<nav>\n<ul>\n" `append` contents `append` "</ul>\n</nav>"
+--2}}}
 
+includePvImTags :: (MonadReader Options r) => Maybe IR.Url -> r Text
+includePvImTags Nothing = pure ""
+includePvImTags ( Just url ) = do
+                        opts <- ask
+                        let assetsDir = pack . toFilePath . oAssetsDir $ opts
+                        let urlText = case url of
+                                        ( IR.AssetRef urlText ) -> assetsDir `append` (pack . SysPath.makeRelative "/" . unpack $ urlText)
+                                        ( IR.PageRef urlText ) -> urlText
+                                        ( IR.RemoteRef urlText ) -> urlText
+                        let ogImTag = "<meta property=\"og:image\" content=\"" `append` urlText `append` "\" />\n"
+                        let twitterImTag = "<meta name=\"twitter:image\" content=\"" `append` urlText `append` "\" />\n"
+                        pure $ ogImTag `append` twitterImTag
 
 --comment to add some flair.
 motd :: Text --{{{2
@@ -200,7 +213,7 @@ wrapInSec content title = do
 --how to turn IR to html. {{{1
 
 instance Html IR.Document where --{{{2
-  htmlify (IR.Document title sections) = do
+  htmlify (IR.Document title desc imPath sections) = do
       opts <- ask 
       --for each block element in document, turn it to html and append a newline. after that, combine list into one Text.
       richPageTitle <- htmlFold title
@@ -211,6 +224,13 @@ instance Html IR.Document where --{{{2
       css <- includeCss
       favicon <- includeFavicon
       navbar <- includeNavbar
+      pvImTags <- includePvImTags imPath
+      let titleTag = "<title>" `append` rawPageTitle `append` "</title>\n"
+      let ogTitleTag = "<meta property=\"og:title\" content=\"" `append` rawPageTitle `append` "\" />\n"
+      let twitterTitleTag = "<meta name=\"twitter:title\" content=\"" `append` rawPageTitle `append` "\" />\n"
+      let descTag = maybe "" (\x -> "<meta name=\"description\" content=\"" `append` x `append` "\" />\n") desc
+      let ogDescTag = maybe "" (\x -> "<meta property=\"og:description\" content=\"" `append` x `append` "\" />\n") desc
+      let twitterDescTag = maybe "" (\x -> "<meta name=\"twitter:description\" content=\"" `append` x `append` "\" />\n") desc
       --combine everything for our final html page.
       pure
         $ "<!DOCTYPE HTML>\n" 
@@ -219,9 +239,13 @@ instance Html IR.Document where --{{{2
         `append` meta
         `append` css
         `append` favicon
-        `append` "<title>"
-        `append` rawPageTitle
-        `append` "</title>\n"
+        `append` titleTag
+        `append` ogTitleTag
+        `append` twitterTitleTag
+        `append` descTag
+        `append` ogDescTag
+        `append` twitterDescTag
+        `append` pvImTags 
         `append` "</head>\n<html>\n<body>\n<article id=\""
         `append` pageId
         `append` "\">\n<h1>" 

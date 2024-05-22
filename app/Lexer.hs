@@ -103,6 +103,8 @@ psuedoBlock :: Parser [RichToken]
 psuedoBlock = choice [ titleMarker
                      , secMarker
                      , groupMarker
+                     , previewDesc
+                     , previewImage
                      , image ]
 
 titleMarker :: Parser [RichToken]
@@ -110,7 +112,19 @@ titleMarker = psuedoBlockWithMarker '#' BeginTitle
 
 secMarker :: Parser [RichToken]
 secMarker = psuedoBlockWithMarker '@' BeginSection
-  
+ 
+previewDesc :: Parser [RichToken]
+previewDesc = psuedoBlockWithMarker '?' BeginPvDesc
+
+previewImage :: Parser [RichToken]
+previewImage = do 
+  start <- basicInline '%' BeginPvImPath
+  maybeAssetRef <- optional $ basicInline '$' AssetRef
+  (contents, eob) <- manyTill_ plainChar singleEndOfBlock
+  case maybeAssetRef of
+    (Just ref) -> pure $ [start] ++ [ref] ++ contents ++ [eob]
+    Nothing -> pure $ [start] ++ contents ++ [eob]             
+
 --elements of the form *contents where * is some marker.
 psuedoBlockWithMarker :: Char -> Token -> Parser [RichToken]
 psuedoBlockWithMarker mark tok = do

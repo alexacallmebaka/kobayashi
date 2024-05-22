@@ -26,6 +26,8 @@ import Data.Text (append, pack, Text, unpack)
 --types {{{1
 data Document = Document 
      { docTitle :: [InlineElem]
+     , previewDesc :: Maybe Text
+     , previewImagePath :: Maybe Url
      , docContents :: [Section] 
      }
 
