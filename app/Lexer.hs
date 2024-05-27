@@ -39,11 +39,11 @@ you cant consume eof, so as long as we are at the end this parser will succeed.
 file :: Parser TokenStream
 file = do 
          title <- titleMarker
-         maybePvImg <- option [] (try previewImage)
-         maybePvDesc <- option [] (try previewDesc) 
+         pvImg <- option [] (try previewImage)
+         pvDesc <- option [] (try previewDesc) 
          contents <- many (space *> choice [psuedoBlock, block])
          eof
-         pure . TokenStream $ title ++ (concat contents)
+         pure . TokenStream $ title ++ pvImg ++ pvDesc ++ (concat contents)
 
 -- block stuff {{{1
 
