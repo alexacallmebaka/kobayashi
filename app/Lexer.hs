@@ -14,7 +14,7 @@ module Lexer
 --imports {{{1
 
 import Control.Applicative (optional, (<|>))
-import Control.Monad.Combinators (choice, manyTill_, option, some, someTill_, someTill)
+import Control.Monad.Combinators (choice, many, manyTill_, option, some, someTill_, someTill)
 import Data.Text (Text, pack)
 import Data.Void (Void)
 import Text.Megaparsec (eof, errorBundlePretty, failure, getSourcePos, try, Parsec, runParser, (<?>))
@@ -33,11 +33,17 @@ import Error (BuildError(..))
 --type alias to make signitures nicer
 type Parser = Parsec Void Text
 
-{- <* eof to ensure we fail if we havent reached the end of the file yet.
+{- eof to ensure we fail if we havent reached the end of the file yet.
 you cant consume eof, so as long as we are at the end this parser will succeed.
 -}
 file :: Parser TokenStream
-file = TokenStream . concat <$> (some (space *> choice [psuedoBlock, block]) <* eof)
+file = do 
+         title <- titleMarker
+         maybePvImg <- option [] (try previewImage)
+         maybePvDesc <- option [] (try previewDesc) 
+         contents <- many (space *> choice [psuedoBlock, block])
+         eof
+         pure . TokenStream $ title ++ (concat contents)
 
 -- block stuff {{{1
 
@@ -100,11 +106,8 @@ listingMarker beginOrEnd = do
 
 --elements that act as block elements but functionally take up one line.
 psuedoBlock :: Parser [RichToken]
-psuedoBlock = choice [ titleMarker
-                     , secMarker
+psuedoBlock = choice [ secMarker
                      , groupMarker
-                     , previewDesc
-                     , previewImage
                      , image ]
 
 titleMarker :: Parser [RichToken]
@@ -114,25 +117,39 @@ secMarker :: Parser [RichToken]
 secMarker = psuedoBlockWithMarker '@' BeginSection
  
 previewDesc :: Parser [RichToken]
-previewDesc = psuedoBlockWithMarker '?' BeginPvDesc
+previewDesc = do
+  startPos <- getSourcePos
+  char '#'
+  space
+  string "DESC:"
+  space
+  let beginPvDescTok = RichToken startPos "# DESC:"  BeginPvDesc
+  (contents, eob) <- manyTill_ plainChar endOfBlock
+  pure $ [beginPvDescTok] ++ contents ++ [eob]
+
 
 previewImage :: Parser [RichToken]
 previewImage = do 
-  start <- basicInline '%' BeginPvImPath
+  startPos <- getSourcePos
+  char '#'
+  space
+  string "IMAGE:"
+  space
+  let beginPvImUrlTok = RichToken startPos "# IMAGE:"  BeginPvImUrl
   maybeAssetRef <- optional $ basicInline '$' AssetRef
   (contents, eob) <- manyTill_ plainChar singleEndOfBlock
   case maybeAssetRef of
-    (Just ref) -> pure $ [start] ++ [ref] ++ contents ++ [eob]
-    Nothing -> pure $ [start] ++ contents ++ [eob]             
+    (Just ref) -> pure $ [beginPvImUrlTok] ++ [ref] ++ contents ++ [eob]
+    Nothing -> pure $ [beginPvImUrlTok] ++ contents ++ [eob]             
 
 --elements of the form *contents where * is some marker.
 psuedoBlockWithMarker :: Char -> Token -> Parser [RichToken]
 psuedoBlockWithMarker mark tok = do
+  space
   start <- basicInline mark tok
+  space
   (contents, eob) <- manyTill_ inline singleEndOfBlock
   pure $ [start] ++ (concat contents) ++ [eob]
-
-
 
 image :: Parser [RichToken]
 image = do

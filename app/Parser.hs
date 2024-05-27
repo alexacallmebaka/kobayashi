@@ -62,8 +62,8 @@ stream :: Parser IR.Document
 stream = do
   basicToken BeginTitle
   title <- some inlineElem <* endOfBlock
+  pvImPath <- optional (basicToken BeginPvImUrl *> linkSource <* endOfBlock)
   pvDesc <- optional (basicToken BeginPvDesc *> (Text.concat <$> some textChar) <* endOfBlock)
-  pvImPath <- optional (basicToken BeginPvImPath *> linkSource <* endOfBlock)
   anon <- many blockElem
   sections <- many section
   eof

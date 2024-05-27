@@ -53,6 +53,7 @@ data Options = Options --{{{2
   , oCssPath :: Path Abs File
   , oFaviconPath :: Path Abs File
   , oNavbar :: [InlineElem]
+  , oBaseUrl :: Text
   } deriving (Eq)
 --2}}}
 
@@ -66,6 +67,7 @@ instance Show Options where --{{{2
                      ++ case oNavbar of
                           [] -> "No"
                           _ -> "Yes"
+                    ++ "\nBase URL: " ++ (show oBaseUrl)
 --2}}}
 
 {- monoid used to build Options. 
@@ -78,6 +80,7 @@ data PartialOptions = PartialOptions --{{{2
   , poCssPath :: Monoid.Last (Path Abs File)
   , poFaviconPath :: Monoid.Last (Path Abs File)
   , poNavbar :: Monoid.Last ([InlineElem])
+  , poBaseUrl :: Monoid.Last Text
   } deriving (Show, Eq)
 --2}}}
 
@@ -92,12 +95,13 @@ instance Semigroup PartialOptions where --{{{2
     , poCssPath = poCssPath lhs <> poCssPath rhs
     , poFaviconPath = poFaviconPath lhs <> poFaviconPath rhs
     , poNavbar = poNavbar lhs <> poNavbar rhs
+    , poBaseUrl = poBaseUrl lhs <> poBaseUrl rhs
     }
 --2}}}
 
 --for the Monoid instance is trivial since each field is already a monoid
 instance Monoid PartialOptions where --{{{2
-  mempty = PartialOptions mempty mempty mempty mempty mempty
+  mempty = PartialOptions mempty mempty mempty mempty mempty mempty
 --2}}}
 
 --1}}}
@@ -122,6 +126,7 @@ partialOptionsCodec = PartialOptions
   <*> Toml.last ( Toml.textBy pathToText textToAbsFile ) "css_path" .= poCssPath
   <*> Toml.last ( Toml.textBy pathToText textToAbsFile ) "favicon_path" .= poFaviconPath
   <*> Toml.last ( Toml.list navbarLinkCodec ) "navbar" .= poNavbar
+  <*> Toml.last ( Toml.text ) "base_url" .= poBaseUrl
 --2}}}
 
 navbarLinkCodec :: TomlCodec InlineElem
@@ -217,7 +222,9 @@ otherwise, parse as a relative dir.
 -}
 partialOptionsFromOptMap :: Map.Map String String -> PartialOptions --{{{2
 partialOptionsFromOptMap optMap = mempty
-  { poBuildDir = Monoid.Last $ Map.lookup "-odir" optMap >>= Path.parseRelDir }
+  { poBuildDir = Monoid.Last $ Map.lookup "-odir" optMap >>= Path.parseRelDir
+  , poBaseUrl = Monoid.Last $ Map.lookup "-burl" optMap >>= (Just . pack)
+  }
 --2}}}
 
 partialOptionsFromToml :: SysPath.FilePath -> IO (Either [TomlDecodeError] PartialOptions) --{{{2
@@ -240,6 +247,7 @@ makeOptions PartialOptions {..} = do
   oCssPath <- lastToEither "Missing path to Css." poCssPath
   oFaviconPath <- lastToEither "Missing path to Favicon." poFaviconPath
   oNavbar <- lastToEither "Missing navbar config." poNavbar
+  oBaseUrl <- lastToEither "Missing Base URL!" poBaseUrl
   pure Options {..}
 --2}}}
 
@@ -251,6 +259,7 @@ defaultPartialOptions = PartialOptions
   , poCssPath = pure $ [absfile|/style.css|]
   , poFaviconPath = pure $ [absfile|/favicon.ico|]
   , poNavbar = pure []
+  , poBaseUrl = mempty
   }
 --2}}}
 

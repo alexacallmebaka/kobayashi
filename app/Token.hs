@@ -48,7 +48,7 @@ data Token = BeginTitle
            | EndOfBlock 
            | TextChar
            | BeginPvDesc
-           | BeginPvImPath
+           | BeginPvImUrl
            deriving (Eq, Show, Ord)
 
 --a token with a starting position and text representation.

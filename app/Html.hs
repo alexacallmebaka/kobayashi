@@ -146,18 +146,19 @@ includeNavbar = do
       pure $ "<nav>\n<ul>\n" `append` contents `append` "</ul>\n</nav>"
 --2}}}
 
-includePvImTags :: (MonadReader Options r) => Maybe IR.Url -> r Text
-includePvImTags Nothing = pure ""
+includePvImTags :: (MonadReader Options r) => Maybe IR.Url -> r (Text, Text)
+includePvImTags Nothing = pure ("","")
 includePvImTags ( Just url ) = do
                         opts <- ask
                         let assetsDir = pack . toFilePath . oAssetsDir $ opts
-                        let urlText = case url of
-                                        ( IR.AssetRef urlText ) -> assetsDir `append` (pack . SysPath.makeRelative "/" . unpack $ urlText)
-                                        ( IR.PageRef urlText ) -> urlText
-                                        ( IR.RemoteRef urlText ) -> urlText
+                        let base_url = oBaseUrl opts
+                        let urlText = base_url `append` case url of
+                                                ( IR.AssetRef urlText ) -> assetsDir `append` (pack . SysPath.makeRelative "/" . unpack $ urlText)
+                                                ( IR.PageRef urlText ) -> urlText
+                                                ( IR.RemoteRef urlText ) -> urlText
                         let ogImTag = "<meta property=\"og:image\" content=\"" `append` urlText `append` "\" />\n"
                         let twitterImTag = "<meta name=\"twitter:image\" content=\"" `append` urlText `append` "\" />\n"
-                        pure $ ogImTag `append` twitterImTag
+                        pure $ (ogImTag, twitterImTag)
 
 --comment to add some flair.
 motd :: Text --{{{2
@@ -224,13 +225,15 @@ instance Html IR.Document where --{{{2
       css <- includeCss
       favicon <- includeFavicon
       navbar <- includeNavbar
-      pvImTags <- includePvImTags imPath
+      (ogPvImTag, twitterPvImTag) <- includePvImTags imPath
       let titleTag = "<title>" `append` rawPageTitle `append` "</title>\n"
       let ogTitleTag = "<meta property=\"og:title\" content=\"" `append` rawPageTitle `append` "\" />\n"
       let twitterTitleTag = "<meta name=\"twitter:title\" content=\"" `append` rawPageTitle `append` "\" />\n"
       let descTag = maybe "" (\x -> "<meta name=\"description\" content=\"" `append` x `append` "\" />\n") desc
       let ogDescTag = maybe "" (\x -> "<meta property=\"og:description\" content=\"" `append` x `append` "\" />\n") desc
       let twitterDescTag = maybe "" (\x -> "<meta name=\"twitter:description\" content=\"" `append` x `append` "\" />\n") desc
+      let (_, domainName) = Text.breakOnEnd "//" (oBaseUrl opts)
+      let twitterDomainTag = "<meta property=\"twitter:domain\" content=\"" `append` domainName `append` "\" />\n"
       --combine everything for our final html page.
       pure
         $ "<!DOCTYPE HTML>\n" 
@@ -239,20 +242,26 @@ instance Html IR.Document where --{{{2
         `append` meta
         `append` css
         `append` favicon
+        `append` "\n<!-- HTML Metadata ⚙️-->\n"
         `append` titleTag
-        `append` ogTitleTag
-        `append` twitterTitleTag
         `append` descTag
+        `append` "\n<!-- Open Graph Metadata 📊-->\n"
+        `append` ogTitleTag
         `append` ogDescTag
+        `append` "<meta property=\"og:type\" content=\"website\" />\n"
+        `append` ogPvImTag
+        `append` "\n<!-- Twitter Metadata 🕊️-->\n"
+        `append` "<meta name=\"twitter:card\" content=\"summary_large_image\" />\n"
+        `append` twitterTitleTag
         `append` twitterDescTag
-        `append` pvImTags 
-        `append` "</head>\n<html>\n<body>\n<article id=\""
+        `append` twitterPvImTag
+        `append` "\n</head>\n<html>\n<body>\n<article id=\""
         `append` pageId
         `append` "\">\n<h1>" 
         `append` richPageTitle
         `append` "</h1>\n"
         `append` navbar
-        `append`  content 
+        `append` content 
         `append` "</article>\n</body>\n</html>\n"
 --2}}}
 
