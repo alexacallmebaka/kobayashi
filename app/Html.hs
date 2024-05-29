@@ -144,7 +144,21 @@ includeNavbar = do
       --this is a sloppy solution, but i was having trouble with tomland making an ordered list from toml.
       contents <- forM navbar (\x -> htmlify x >>= pure . (flip append "</li>\n") . (append "<li>")) >>= pure . Text.concat
       pure $ "<nav>\n<ul>\n" `append` contents `append` "</ul>\n</nav>"
+--2}}}
 
+includePvImTags :: (MonadReader Options r) => Maybe IR.Url -> r (Text, Text)
+includePvImTags Nothing = pure ("","")
+includePvImTags ( Just url ) = do
+                        opts <- ask
+                        let assetsDir = pack . toFilePath . oAssetsDir $ opts
+                        let base_url = oBaseUrl opts
+                        let urlText = base_url `append` case url of
+                                                ( IR.AssetRef urlText ) -> assetsDir `append` (pack . SysPath.makeRelative "/" . unpack $ urlText)
+                                                ( IR.PageRef urlText ) -> urlText
+                                                ( IR.RemoteRef urlText ) -> urlText
+                        let ogImTag = "<meta property=\"og:image\" content=\"" `append` urlText `append` "\" />\n"
+                        let twitterImTag = "<meta name=\"twitter:image\" content=\"" `append` urlText `append` "\" />\n"
+                        pure $ (ogImTag, twitterImTag)
 
 --comment to add some flair.
 motd :: Text --{{{2
@@ -200,7 +214,7 @@ wrapInSec content title = do
 --how to turn IR to html. {{{1
 
 instance Html IR.Document where --{{{2
-  htmlify (IR.Document title sections) = do
+  htmlify (IR.Document title desc imPath sections) = do
       opts <- ask 
       --for each block element in document, turn it to html and append a newline. after that, combine list into one Text.
       richPageTitle <- htmlFold title
@@ -211,24 +225,43 @@ instance Html IR.Document where --{{{2
       css <- includeCss
       favicon <- includeFavicon
       navbar <- includeNavbar
+      (ogPvImTag, twitterPvImTag) <- includePvImTags imPath
+      let titleTag = "<title>" `append` rawPageTitle `append` "</title>\n"
+      let ogTitleTag = "<meta property=\"og:title\" content=\"" `append` rawPageTitle `append` "\" />\n"
+      let twitterTitleTag = "<meta name=\"twitter:title\" content=\"" `append` rawPageTitle `append` "\" />\n"
+      let descTag = maybe "" (\x -> "<meta name=\"description\" content=\"" `append` x `append` "\" />\n") desc
+      let ogDescTag = maybe "" (\x -> "<meta property=\"og:description\" content=\"" `append` x `append` "\" />\n") desc
+      let twitterDescTag = maybe "" (\x -> "<meta name=\"twitter:description\" content=\"" `append` x `append` "\" />\n") desc
+      let (_, domainName) = Text.breakOnEnd "//" (oBaseUrl opts)
+      let twitterDomainTag = "<meta property=\"twitter:domain\" content=\"" `append` domainName `append` "\" />\n"
       --combine everything for our final html page.
       pure
         $ "<!DOCTYPE HTML>\n" 
         `append` motd 
-        `append` "<head>\n" 
+        `append` "<html>\n<head>\n" 
         `append` meta
         `append` css
         `append` favicon
-        `append` "<title>"
-        `append` rawPageTitle
-        `append` "</title>\n"
-        `append` "</head>\n<html>\n<body>\n<article id=\""
+        `append` "\n<!-- HTML Metadata ⚙️-->\n"
+        `append` titleTag
+        `append` descTag
+        `append` "\n<!-- Open Graph Metadata 📊-->\n"
+        `append` ogTitleTag
+        `append` ogDescTag
+        `append` "<meta property=\"og:type\" content=\"website\" />\n"
+        `append` ogPvImTag
+        `append` "\n<!-- Twitter Metadata 🕊️-->\n"
+        `append` "<meta name=\"twitter:card\" content=\"summary_large_image\" />\n"
+        `append` twitterTitleTag
+        `append` twitterDescTag
+        `append` twitterPvImTag
+        `append` "\n</head>\n<body>\n<article id=\""
         `append` pageId
         `append` "\">\n<h1>" 
         `append` richPageTitle
         `append` "</h1>\n"
         `append` navbar
-        `append`  content 
+        `append` content 
         `append` "</article>\n</body>\n</html>\n"
 --2}}}
 

@@ -32,7 +32,7 @@ import qualified Options
 
 --list of command line option strings.
 options :: [String] --{{{1
-options = ["-odir", "-cfg"]
+options = ["-odir", "-cfg", "-burl"]
 --1}}}
 
 --display help message, detailing all commands and options.
@@ -44,6 +44,8 @@ help = mapM_ TIO.putStr [ "Usage: kobayashi [options] <command> \n\n"
     , justifyRight 50  ' ' "specify an output directory for the html files.\n"
     , justifyLeft 50 ' ' "-cfg /path/to/config.toml:"
     , justifyRight 50  ' ' "TOML file to use for project configuration details.\n"
+    , justifyLeft 50 ' ' "-burl url:"
+    , justifyRight 50  ' ' "base URL to be used for creating absolute links to local resources.\n"
     ,"\ncommands\n"
     , "============\n"
     , justifyLeft 50 ' ' "build /path/to/source/dir:"
@@ -106,46 +108,52 @@ main = do --{{{1
     args <- getArgs
     
     --parse options from command.
+    --note: cmd is a list because it is everything we don't consume creating optMap.
     let (optMap, cmd) = parseOptions Map.empty args
-    let cmdOpts = Options.partialOptionsFromOptMap optMap
     
-    --serach optMap for path to toml file. if none is found, use default path "kobayashi.toml".
-    let tomlPathString = Map.findWithDefault "kobayashi.toml" "-cfg" optMap
-    hasToml <- doesFileExist tomlPathString
-    
-    {- print toml path if it exists, then build a partialOptions record.
-    otherwise alert the user that a toml file was not found. and return an empty partialOptions.
-    it is important to not that the toml not existing is not always an error. 
-    the user may not want to use a toml file, so the default "kobayashi.toml" would not exist and it is okay.  
-    -}
-    tomlOpts <- if hasToml 
-                  then do
-                    putStrLn $ "Using: " ++ tomlPathString ++ "\n"
-                    Options.partialOptionsFromToml tomlPathString
-                  else do 
-                    putStrLn $ tomlPathString ++ " not found!\n"
-                    pure . Right $ mempty
+    --catch help early.
+    if cmd == ["help"]
+       then
+        help
+      else do
+        let cmdOpts = Options.partialOptionsFromOptMap optMap
+        
+        --search optMap for path to toml file. if none is found, use default path "kobayashi.toml".
+        let tomlPathString = Map.findWithDefault "kobayashi.toml" "-cfg" optMap
+        hasToml <- doesFileExist tomlPathString
+        
+        {- print toml path if it exists, then build a partialOptions record.
+        otherwise alert the user that a toml file was not found. and return an empty partialOptions.
+        it is important to not that the toml not existing is not always an error. 
+        the user may not want to use a toml file, so the default "kobayashi.toml" would not exist and it is okay.  
+        -}
+        tomlOpts <- if hasToml 
+                      then do
+                        putStrLn $ "Using: " ++ tomlPathString ++ "\n"
+                        Options.partialOptionsFromToml tomlPathString
+                      else do 
+                        putStrLn $ tomlPathString ++ " not found!\n"
+                        pure . Right $ mempty
 
-    case tomlOpts of
-        --if the toml file had errors, print them and exit.
-        Left errs -> do
-          TIO.putStrLn "[INPUT ERROR]\nError(s) in kobayashi.toml:"
-          TIO.putStrLn $ prettyTomlDecodeErrors errs
+        case tomlOpts of
+            --if the toml file had errors, print them and exit.
+            Left errs -> do
+              TIO.putStrLn "[INPUT ERROR]\nError(s) in kobayashi.toml:"
+              TIO.putStrLn $ prettyTomlDecodeErrors errs
 
-        Right tomlOpts -> do
-          --combine partialOptions to create Options.
-          let opts = Options.makeOptions $ Options.defaultPartialOptions <> tomlOpts <> cmdOpts
+            Right tomlOpts -> do
+              --combine partialOptions to create Options.
+              let opts = Options.makeOptions $ Options.defaultPartialOptions <> tomlOpts <> cmdOpts
 
-          case opts of
-            Right options -> do
-              print options
-              --print newline to separate options from command logs for readability.
-              putChar '\n'
-              runCommand options cmd
+              case opts of
+                Right options -> do
+                  print options
+                  --print newline to separate options from command logs for readability.
+                  putChar '\n'
+                  runCommand options cmd
 
-            --if there was an error creating options, print it and exit.
-            Left err -> do
-              print tomlOpts
-              TIO.putStrLn "[INPUT ERROR]\nError(s) in configuration:"
-              print err
+                --if there was an error creating options, print it and exit.
+                Left err -> do
+                  TIO.putStrLn "[INPUT ERROR]\nError(s) in configuration:"
+                  print err
 --1}}}
