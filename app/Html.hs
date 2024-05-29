@@ -238,7 +238,7 @@ instance Html IR.Document where --{{{2
       pure
         $ "<!DOCTYPE HTML>\n" 
         `append` motd 
-        `append` "<head>\n" 
+        `append` "<html>\n<head>\n" 
         `append` meta
         `append` css
         `append` favicon
@@ -255,7 +255,7 @@ instance Html IR.Document where --{{{2
         `append` twitterTitleTag
         `append` twitterDescTag
         `append` twitterPvImTag
-        `append` "\n</head>\n<html>\n<body>\n<article id=\""
+        `append` "\n</head>\n<body>\n<article id=\""
         `append` pageId
         `append` "\">\n<h1>" 
         `append` richPageTitle
