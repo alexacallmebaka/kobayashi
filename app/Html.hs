@@ -167,8 +167,8 @@ motd = "<!--Made with ❤️ using Kobayashi: https://github.com/alexacallmebaka
 
 --add various meta tags.
 meta :: Text
---sets encoding, viewport.
-meta = "<meta charset=\"UTF-8\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n"
+--sets encoding, viewport, robots (disallow crawlers).
+meta = "<meta charset=\"UTF-8\" />\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n<meta name=\"robots\" content=\"noindex, nofollow\">\n"
 
 --1}}}
 
