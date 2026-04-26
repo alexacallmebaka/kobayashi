@@ -47,7 +47,7 @@ data BlockElem = Paragraph [InlineElem]
                | UnorderedList [UnorderedListItem]
                --1st list is quote, 2nd is author.
                | BlockQuote [InlineElem] [InlineElem]
-               | Image Url
+               | Image Bool Url
                --label + list of elements.
                | Group Text [BlockElem]
                --Text is the verbatim code.

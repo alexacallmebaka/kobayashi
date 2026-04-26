@@ -154,12 +154,18 @@ psuedoBlockWithMarker mark tok = do
 image :: Parser [RichToken]
 image = do
   start <- basicInline '<' BeginImg
+  maybeMetadata <- optional $ basicInline '!' PhotoMetadata
   maybeAssetRef <- optional $ basicInline '$' AssetRef
   (content,end) <- manyTill_ plainChar ( try (basicInline '>' EndImg) )
   eob <- endOfBlock
-  case maybeAssetRef of
-    (Just ref) -> pure $ [start] ++ [ref]  ++ content ++ [end] ++ [eob]
-    Nothing -> pure $ [start] ++ content ++ [end] ++ [eob]
+  let metadata = case maybeMetadata of
+                     (Just metadata) -> [metadata]
+                     Nothing -> []
+  let ref = case maybeAssetRef of
+                (Just ref) -> [ref]
+                Nothing -> []
+
+  pure $ [start] ++ metadata ++ ref  ++ content ++ [end] ++ [eob]
 
 groupMarker :: Parser [RichToken]
 groupMarker = do

@@ -34,6 +34,7 @@ data Token = BeginTitle
            | BlockQuoteAuthor
            | BeginImg
            | EndImg
+           | PhotoMetadata
            | BeginCodeListing
            | EndCodeListing
            | Bold 

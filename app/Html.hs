@@ -275,12 +275,12 @@ instance Html IR.Section where --{{{2
 instance Html IR.BlockElem where --{{{2
     htmlify (IR.Paragraph inner) = wrap inner P
     htmlify (IR.UnorderedList inner) = wrap inner UL
-    htmlify (IR.Image (IR.AssetRef src)) = do
+    htmlify (IR.Image _ (IR.AssetRef src)) = do
       opts <- ask
       let assetsDir = pack . toFilePath . oAssetsDir $ opts
       let assetPath = pack . SysPath.makeRelative "/" . unpack $ src
       pure $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\" />"
-    htmlify (IR.Image (IR.RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\" />"
+    htmlify (IR.Image _ (IR.RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\" />"
     htmlify (IR.CodeListing text) = pure $ "<pre>\n<code>\n" `append` (makeSafe text) `append` "\n</code>\n</pre>"
     htmlify (IR.BlockQuote quote author) = do
       quoteText <- htmlFold quote

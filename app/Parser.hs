@@ -91,10 +91,13 @@ paragraph = IR.Paragraph <$> some inlineElem <* endOfBlock
 image :: Parser IR.BlockElem
 image = do
   basicToken BeginImg
+  maybeMetadata <- optional $ basicToken PhotoMetadata
   src <- linkSource
   basicToken EndImg
   endOfBlock
-  pure . IR.Image $ src
+  case maybeMetadata of
+       (Just _) -> pure . IR.Image True $ src
+       Nothing -> pure . IR.Image False $ src
 
 blockQuote :: Parser IR.BlockElem
 blockQuote = do
