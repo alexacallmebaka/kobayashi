@@ -16,14 +16,37 @@ module Document
     , InlineElem(..)
     , UnorderedListItem (..)
     , Url (..)
+    , PhotoMetadata(..)
     ) where
 --1}}}
 
 --imports {{{1
 import Data.Text (append, pack, Text, unpack)
+import Control.Applicative ((<|>))
 --1}}}
 
 --types {{{1
+
+data PhotoMetadata = PhotoMetadata 
+  { iso :: Maybe Int
+  , aperture :: Maybe Float
+  , shutterSpeed :: Maybe Rational
+  , cameraModel :: Maybe Text
+  , focalLength :: Maybe Text
+  } deriving (Eq, Show, Ord)
+
+instance Semigroup PhotoMetadata where 
+  lhs <> rhs = PhotoMetadata
+        { iso = (iso lhs) <|> (iso rhs)
+        , aperture = (aperture lhs) <|> (aperture rhs)
+        , shutterSpeed = (shutterSpeed lhs) <|> (shutterSpeed rhs)
+        , cameraModel = (cameraModel lhs) <|> (cameraModel rhs)
+        , focalLength = (focalLength lhs) <|> (focalLength rhs)
+        }
+
+instance Monoid PhotoMetadata where
+	mempty = PhotoMetadata Nothing Nothing Nothing Nothing Nothing
+
 data Document = Document 
      { docTitle :: [InlineElem]
      , previewDesc :: Maybe Text
@@ -47,7 +70,7 @@ data BlockElem = Paragraph [InlineElem]
                | UnorderedList [UnorderedListItem]
                --1st list is quote, 2nd is author.
                | BlockQuote [InlineElem] [InlineElem]
-               | Image Bool Url
+               | Image Bool (Maybe PhotoMetadata) Url
                --label + list of elements.
                | Group Text [BlockElem]
                --Text is the verbatim code.

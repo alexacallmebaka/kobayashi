@@ -34,15 +34,17 @@ import Control.Monad.Reader (ask, MonadReader, ReaderT, runReaderT)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer (execWriterT, tell, WriterT)
 import Data.Char (toLower)
-import Data.Text (Text, append)
+import Data.Either (partitionEithers)
+import Data.Text (Text, append, pack, unpack)
 import Path (Dir, File, Path, Rel, relfile, SomeBase (..), (</>))
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist, listDirectory, withCurrentDirectory)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Text.Printf (printf)
+import ExifTool (ExifTool, get, Metadata, withExifTool, Tag(..), readMetaEither)
 
 import Error (BuildError(..))
 import Html (htmlify)
-import Document (Document(..))
+import Document (Document(..), BlockElem(..), Url(..), PhotoMetadata(..))
 import Token (TokenStream)
 import Lexer (tokenize)
 import Options (Options(..))
@@ -88,7 +90,38 @@ runBuilder opts b = runReaderT ( execWriterT b ) opts
 --1}}}
 
 --IO helper functions {{{1
+getMetadataFromTag :: Metadata -> Text -> Tag -> Either BuildError PhotoMetadata
+getMetadataFromTag metadata path tag = case (get tag metadata) of
+                 Nothing -> Left . ExifError . pack $ "Failed to get EXIF tag " ++ (show tag) ++ " from file " ++ (show path)
+                 (Just tagdata) -> case tag of
+                                     (Tag "Iso") -> Right . PhotoMetadata (Just . read . unpack $ tagdata) Nothing Nothing Nothing $ Nothing
+                                     (Tag "Aperture") -> Right . PhotoMetadata Nothing (Just . read . unpack $ tagdata) Nothing Nothing $ Nothing
+                                     (Tag "ShutterSpeed") -> Right . PhotoMetadata Nothing Nothing (Just . read . unpack $ tagdata) Nothing $ Nothing
+                                     (Tag "CameraModel") -> Right . PhotoMetadata Nothing Nothing Nothing (Just . pack . read . unpack $ tagdata) $ Nothing
+                                     (Tag "FocalLength") -> Right . PhotoMetadata Nothing Nothing Nothing Nothing $ (Just . pack. read . unpack $ tagdata)
+                                     (Tag x) -> Left . ExifError $ "Asked to parse unsupported tag " `append` x
 
+getImageMetadata :: Text -> ExifTool -> IO ([BuildError], [PhotoMetadata])
+getImageMetadata path exiftool = do
+  let tags = [Tag "Aperture", Tag "ShutterSpeed", Tag "Iso", Tag "Model", Tag "FocalLength"] 
+  maybeMetadata <- readMetaEither exiftool tags (unpack path)
+  case maybeMetadata of
+    (Left errors) -> pure $ ([ExifError errors], [])
+    (Right metadata) -> pure . partitionEithers . map (getMetadataFromTag metadata path) $ tags
+      
+
+attachMetadataToImage :: BlockElem -> Builder BlockElem
+attachMetadataToImage (Image collectMetadata _ (AssetRef src)) = do 
+  (errors, metadata) <- liftIO . withExifTool . getImageMetadata $ src
+  tell errors
+  pure $ Image collectMetadata (Just . mconcat $ metadata) (AssetRef src)
+attachMetadataToImage (Image collectMetadata Nothing (RemoteRef src)) = do
+  tell [ ExifError $ "Cannot display metadata for " `append` src `append` " must be a local file!" ]
+  pure $ Image collectMetadata Nothing (RemoteRef src)
+attachMetadataToImage blockElem = do
+  tell [ ExifError . pack $ "An internal error has occured when processing " ++ (show blockElem) ]
+  pure blockElem
+  
 --get all children of a given directory.
 getChildren :: Path b Dir -> IO [Path b Dir] --{{{2
 getChildren dir = do
@@ -136,7 +169,9 @@ getFileDst dst file
 kbyToHtml :: (MonadReader Options r) => String -> Text -> r (Either BuildError Text) --{{{1
 kbyToHtml sourceFileName input = 
     case (tokenize sourceFileName input) >>= (parseTokens sourceFileName) of
-      Right doc -> htmlify doc >>= pure . Right
+      Right doc -> do 
+        html <- htmlify doc
+        pure . Right $ html
       Left x -> pure . Left $ x
 --1}}}
 

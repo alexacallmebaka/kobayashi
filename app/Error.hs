@@ -22,6 +22,7 @@ type ErrorMsg = Text
 data BuildError --{{{2
                 = LexError { unError :: ErrorMsg } 
                 | ParseError { unError :: ErrorMsg } 
+                | ExifError { unError :: ErrorMsg } 
                 deriving (Eq, Show)
 --2}}}
 

@@ -96,8 +96,8 @@ image = do
   basicToken EndImg
   endOfBlock
   case maybeMetadata of
-       (Just _) -> pure . IR.Image True $ src
-       Nothing -> pure . IR.Image False $ src
+       (Just _) -> pure . IR.Image True Nothing $ src
+       Nothing -> pure . IR.Image False Nothing $ src
 
 blockQuote :: Parser IR.BlockElem
 blockQuote = do
