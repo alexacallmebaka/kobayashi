@@ -35,6 +35,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (append, pack, Text, unpack)
 import GHC.Generics (Generic)
 import Path (toFilePath)
+import Data.Ratio (numerator, denominator)
 
 import Options(Options(..))
 
@@ -275,11 +276,43 @@ instance Html IR.Section where --{{{2
 instance Html IR.BlockElem where --{{{2
     htmlify (IR.Paragraph inner) = wrap inner P
     htmlify (IR.UnorderedList inner) = wrap inner UL
-    htmlify (IR.Image _ _ (IR.AssetRef src)) = do
+    htmlify (IR.Image _ maybeMetadata (IR.AssetRef src)) = do
       opts <- ask
       let assetsDir = pack . toFilePath . oAssetsDir $ opts
       let assetPath = pack . SysPath.makeRelative "/" . unpack $ src
-      pure $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\" />"
+      case maybeMetadata of
+        Nothing -> pure $ "<img src=\"" `append` assetsDir `append` assetPath `append` "\" />"
+        Just (meta) -> do
+          let isoElem = case (IR.iso meta) of
+                Nothing -> ""
+                (Just isoValue) -> "<li class=\"iso\">" `append` isoValue `append` " ISO</li>\n"
+          let apertureElem = case (IR.aperture meta) of
+                Nothing -> ""
+                (Just apertureValue) -> "<li class=\"aperture\"> f/" `append` apertureValue `append` "</li>\n"
+          let shutterSpeedElem = case (IR.shutterSpeed meta) of
+                Nothing -> ""
+                (Just shutterSpeedValue) -> "<li class=\"shutter-speed\">" `append` shutterSpeedValue `append` " s</li>\n"
+          let focalLengthElem = case (IR.focalLength meta) of
+                Nothing -> ""
+                (Just focalLengthValue) -> "<li class=\"focal-length\">" `append` focalLengthValue `append` "</li>\n"
+          let cameraMakeElem = case (IR.cameraMake meta) of
+                Nothing -> ""
+                (Just cameraMakeValue) -> "<span class=\"camera-make\">" `append` cameraMakeValue `append` "</span>\n"
+          let cameraModelElem = case (IR.cameraModel meta) of
+                Nothing -> ""
+                (Just cameraModelValue) -> "<span class=\"camera-model\">" `append` cameraModelValue `append` "</span>\n"
+          let imgElem = "<img src=\"" `append` assetsDir `append` assetPath `append` "\" />\n"
+          pure $ "<figure class=\"photograph\">\n"
+            `append` imgElem
+            `append` "<figcaption>\n<ul class=\"img-metadata\">\n"
+            `append` apertureElem
+            `append` shutterSpeedElem
+            `append` isoElem
+            `append` focalLengthElem
+            `append` "</ul>\n"
+            `append` cameraMakeElem
+            `append` cameraModelElem
+            `append` "</figcaption></figure>"
     htmlify (IR.Image _ _ (IR.RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\" />"
     htmlify (IR.CodeListing text) = pure $ "<pre>\n<code>\n" `append` (makeSafe text) `append` "\n</code>\n</pre>"
     htmlify (IR.BlockQuote quote author) = do

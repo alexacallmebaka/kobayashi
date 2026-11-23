@@ -34,6 +34,7 @@ printErrors (err:errs) = do
   let errType = case err of  
                   LexError _ -> "[LEXICAL ERROR]"
                   ParseError _ -> "[PARSE ERROR]"
+                  ExifError _ -> "[EXIF ERROR]"
   let errMsg = errType `append` " " `append` unError err
   TIO.putStrLn errMsg 
   printErrors errs

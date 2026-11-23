@@ -36,7 +36,7 @@ import Control.Monad.Writer (execWriterT, tell, WriterT)
 import Data.Char (toLower)
 import Data.Either (partitionEithers)
 import Data.Text (Text, append, pack, unpack)
-import Path (Dir, File, Path, Rel, relfile, SomeBase (..), (</>))
+import Path (Dir, File, Path, Rel, relfile, SomeBase (..), (</>), toFilePath)
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist, listDirectory, withCurrentDirectory)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Text.Printf (printf)
@@ -44,7 +44,7 @@ import ExifTool (ExifTool, get, Metadata, withExifTool, Tag(..), readMetaEither)
 
 import Error (BuildError(..))
 import Html (htmlify)
-import Document (Document(..), BlockElem(..), Url(..), PhotoMetadata(..))
+import Document (Document(..), BlockElem(..), Url(..), PhotoMetadata(..), Section(..))
 import Token (TokenStream)
 import Lexer (tokenize)
 import Options (Options(..))
@@ -92,18 +92,19 @@ runBuilder opts b = runReaderT ( execWriterT b ) opts
 --IO helper functions {{{1
 getMetadataFromTag :: Metadata -> Text -> Tag -> Either BuildError PhotoMetadata
 getMetadataFromTag metadata path tag = case (get tag metadata) of
-                 Nothing -> Left . ExifError . pack $ "Failed to get EXIF tag " ++ (show tag) ++ " from file " ++ (show path)
-                 (Just tagdata) -> case tag of
-                                     (Tag "Iso") -> Right . PhotoMetadata (Just . read . unpack $ tagdata) Nothing Nothing Nothing $ Nothing
-                                     (Tag "Aperture") -> Right . PhotoMetadata Nothing (Just . read . unpack $ tagdata) Nothing Nothing $ Nothing
-                                     (Tag "ShutterSpeed") -> Right . PhotoMetadata Nothing Nothing (Just . read . unpack $ tagdata) Nothing $ Nothing
-                                     (Tag "CameraModel") -> Right . PhotoMetadata Nothing Nothing Nothing (Just . pack . read . unpack $ tagdata) $ Nothing
-                                     (Tag "FocalLength") -> Right . PhotoMetadata Nothing Nothing Nothing Nothing $ (Just . pack. read . unpack $ tagdata)
+                 Nothing -> Left . ExifError $ "Failed to get EXIF tag " `append` (tagName tag) `append` " from file " `append` path
+                 tagdata -> case tag of
+                                     (Tag "Iso") -> Right . PhotoMetadata tagdata Nothing Nothing Nothing Nothing $ Nothing
+                                     (Tag "Aperture") -> Right . PhotoMetadata Nothing tagdata Nothing Nothing Nothing $ Nothing
+                                     (Tag "ShutterSpeed") -> Right . PhotoMetadata Nothing Nothing tagdata Nothing Nothing $ Nothing
+                                     (Tag "Make") -> Right . PhotoMetadata Nothing Nothing Nothing tagdata Nothing $ Nothing
+                                     (Tag "Model") -> Right . PhotoMetadata Nothing Nothing Nothing Nothing tagdata $ Nothing
+                                     (Tag "FocalLength") -> Right . PhotoMetadata Nothing Nothing Nothing Nothing Nothing $ tagdata
                                      (Tag x) -> Left . ExifError $ "Asked to parse unsupported tag " `append` x
 
 getImageMetadata :: Text -> ExifTool -> IO ([BuildError], [PhotoMetadata])
 getImageMetadata path exiftool = do
-  let tags = [Tag "Aperture", Tag "ShutterSpeed", Tag "Iso", Tag "Model", Tag "FocalLength"] 
+  let tags = [Tag "Aperture", Tag "ShutterSpeed", Tag "Iso", Tag "Make", Tag "Model", Tag "FocalLength"] 
   maybeMetadata <- readMetaEither exiftool tags (unpack path)
   case maybeMetadata of
     (Left errors) -> pure $ ([ExifError errors], [])
@@ -111,17 +112,24 @@ getImageMetadata path exiftool = do
       
 
 attachMetadataToImage :: BlockElem -> Builder BlockElem
-attachMetadataToImage (Image collectMetadata _ (AssetRef src)) = do 
-  (errors, metadata) <- liftIO . withExifTool . getImageMetadata $ src
+attachMetadataToImage (Image True _ (AssetRef src)) = do 
+  opts <- ask
+  let buildDir = pack . toFilePath . oBuildDir $ opts
+  let assetsDir = pack . SysPath.makeRelative "/" . toFilePath . oAssetsDir $ opts
+  let assetPath = pack . SysPath.makeRelative "/" . unpack $ src
+  (errors, metadata) <- liftIO . withExifTool . getImageMetadata $ buildDir `append` assetsDir `append` assetPath
   tell errors
-  pure $ Image collectMetadata (Just . mconcat $ metadata) (AssetRef src)
-attachMetadataToImage (Image collectMetadata Nothing (RemoteRef src)) = do
+  pure $ Image True (Just . mconcat $ metadata) (AssetRef src)
+attachMetadataToImage (Image True _ (RemoteRef src)) = do
   tell [ ExifError $ "Cannot display metadata for " `append` src `append` " must be a local file!" ]
-  pure $ Image collectMetadata Nothing (RemoteRef src)
-attachMetadataToImage blockElem = do
-  tell [ ExifError . pack $ "An internal error has occured when processing " ++ (show blockElem) ]
-  pure blockElem
-  
+  pure $ Image True Nothing (RemoteRef src)
+attachMetadataToImage blockElem = pure blockElem
+ 
+attachAllImageMetadata :: Document -> Builder Document
+attachAllImageMetadata (Document title desc prevImg sections) = do
+  newSections <- traverse (\sec -> Section (secTitle sec) <$> traverse attachMetadataToImage (secContents sec)) sections
+  pure $ Document title desc prevImg newSections
+
 --get all children of a given directory.
 getChildren :: Path b Dir -> IO [Path b Dir] --{{{2
 getChildren dir = do
@@ -155,7 +163,7 @@ getKbyFiles dir = do
 --given a path to a source kby file, generate the path to the corresponding html file in the build directory.
 getFileDst :: Path b Dir -> Path Rel File -> IO (Path b File) --{{{2
 getFileDst dst file 
-  --if file is "index.kby" (case-insensitive), then just plop "index.html" in the build directory."
+  --if file is "index.kby" (case-insensitive), then just plop "index.html" in the build directory.
   | (map toLower . Path.toFilePath . Path.filename $ file) ==  "index.kby" = pure $ dst </> [relfile|index.html|]
   {-in all other cases, create a folder with the file's name in the build and place an "index.html" inside that folder.
   this has the affect of going to www.mysite.com/mySrc to view the html of mySrc.kby.
@@ -166,13 +174,15 @@ getFileDst dst file
 --1}}}
 
 --convert kby-encoded text to html-encoded text.
-kbyToHtml :: (MonadReader Options r) => String -> Text -> r (Either BuildError Text) --{{{1
+kbyToHtml :: String -> Text -> Builder Text --{{{1
 kbyToHtml sourceFileName input = 
     case (tokenize sourceFileName input) >>= (parseTokens sourceFileName) of
       Right doc -> do 
-        html <- htmlify doc
-        pure . Right $ html
-      Left x -> pure . Left $ x
+        docWithMetadata <- attachAllImageMetadata doc
+        lift . htmlify $ docWithMetadata
+      Left x -> do 
+        tell [x]
+        pure ""
 --1}}}
 
 --build directory and individual files. {{{1
@@ -196,14 +206,10 @@ buildPage buildDir src = do
   let srcString = Path.toFilePath src
   input <- liftIO . TIO.readFile $ srcString
   liftIO . printf "Building %s...\n" $ srcString
-  result <- lift . kbyToHtml srcString $ input
-  case result of
-    --if error, log error then exit.
-    Left err -> tell [err]
-    Right page -> do
-          dst <- liftIO . getFileDst buildDir . Path.filename $ src
-          --create build directory if it doesn't exist.
-          liftIO . createDirectoryIfMissing True . Path.toFilePath . Path.parent $ dst
-          liftIO . TIO.writeFile (Path.toFilePath dst) $ page
+  page <- kbyToHtml srcString $ input
+  dst <- liftIO . getFileDst buildDir . Path.filename $ src
+  --create build directory if it doesn't exist.
+  liftIO . createDirectoryIfMissing True . Path.toFilePath . Path.parent $ dst
+  liftIO . TIO.writeFile (Path.toFilePath dst) $ page
 --2}}}
 --1}}}

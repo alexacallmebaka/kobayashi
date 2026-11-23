@@ -28,9 +28,10 @@ import Control.Applicative ((<|>))
 --types {{{1
 
 data PhotoMetadata = PhotoMetadata 
-  { iso :: Maybe Int
-  , aperture :: Maybe Float
-  , shutterSpeed :: Maybe Rational
+  { iso :: Maybe Text
+  , aperture :: Maybe Text
+  , shutterSpeed :: Maybe Text
+  , cameraMake :: Maybe Text
   , cameraModel :: Maybe Text
   , focalLength :: Maybe Text
   } deriving (Eq, Show, Ord)
@@ -40,12 +41,13 @@ instance Semigroup PhotoMetadata where
         { iso = (iso lhs) <|> (iso rhs)
         , aperture = (aperture lhs) <|> (aperture rhs)
         , shutterSpeed = (shutterSpeed lhs) <|> (shutterSpeed rhs)
+        , cameraMake = (cameraMake lhs) <|> (cameraMake rhs)
         , cameraModel = (cameraModel lhs) <|> (cameraModel rhs)
         , focalLength = (focalLength lhs) <|> (focalLength rhs)
         }
 
 instance Monoid PhotoMetadata where
-	mempty = PhotoMetadata Nothing Nothing Nothing Nothing Nothing
+	mempty = PhotoMetadata Nothing Nothing Nothing Nothing Nothing Nothing
 
 data Document = Document 
      { docTitle :: [InlineElem]
