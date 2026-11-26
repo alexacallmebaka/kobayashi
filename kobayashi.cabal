@@ -61,7 +61,8 @@ executable kobayashi
                       path,
                       mtl,
                       transformers,
-                      parser-combinators
+                      parser-combinators,
+		      exiftool
 
     hs-source-dirs:   app
     default-language: Haskell2010
