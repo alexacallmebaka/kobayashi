@@ -296,11 +296,13 @@ instance Html IR.BlockElem where --{{{2
                 Nothing -> ""
                 (Just focalLengthValue) -> "<li class=\"focal-length\">" `append` focalLengthValue `append` "</li>\n"
           let cameraMakeElem = case (IR.cameraMake meta) of
-                Nothing -> ""
-                (Just cameraMakeValue) -> "<span class=\"camera-make\">" `append` cameraMakeValue `append` "</span>\n"
+                                 Nothing -> ""
+                                 (Just cameraMakeValue) -> case cameraMakeValue of
+                                                             "NIKON CORPORATION" -> ""
+                                                             make -> make `append` " "
           let cameraModelElem = case (IR.cameraModel meta) of
                 Nothing -> ""
-                (Just cameraModelValue) -> "<span class=\"camera-model\">" `append` cameraModelValue `append` "</span>\n"
+                (Just cameraModelValue) -> cameraModelValue
           let imgElem = "<img src=\"" `append` assetsDir `append` assetPath `append` "\" />\n"
           pure $ "<figure class=\"photograph\">\n"
             `append` imgElem
@@ -310,8 +312,10 @@ instance Html IR.BlockElem where --{{{2
             `append` isoElem
             `append` focalLengthElem
             `append` "</ul>\n"
+            `append` "<span class=\"camera-model\">"
             `append` cameraMakeElem
             `append` cameraModelElem
+            `append` "</span>"
             `append` "</figcaption></figure>"
     htmlify (IR.Image _ _ (IR.RemoteRef src)) = pure $ "<img src=\"" `append` src `append` "\" />"
     htmlify (IR.CodeListing text) = pure $ "<pre>\n<code>\n" `append` (makeSafe text) `append` "\n</code>\n</pre>"
